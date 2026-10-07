@@ -16,11 +16,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Ajax {
 
-	const COVERAGE_LAT       = -33.4489;
-	const COVERAGE_LNG       = -70.6693;
-	const COVERAGE_RADIUS_KM = 50;
-
-
 	public function __construct() {
 		add_action( 'wp_ajax_simple_form_get_progress', array( $this, 'get_progress' ) );
 		add_action( 'wp_ajax_nopriv_simple_form_get_progress', array( $this, 'get_progress' ) );
@@ -205,8 +200,8 @@ class Ajax {
 			wp_send_json_error( array( 'message' => __( 'Datos inválidos para calcular el precio.', 'simple-form' ) ), 422 );
 		}
 
-		if ( ! $this->is_within_coverage( $coords ) ) {
-			wp_send_json_error( array( 'message' => __( 'La ubicación está fuera del área de cobertura.', 'simple-form' ) ), 422 );
+		if ( ! Coverage::contains( $coords[0], $coords[1] ) ) {
+			wp_send_json_error( array( 'message' => __( 'La ubicación está fuera de Chile.', 'simple-form' ) ), 422 );
 		}
 
 		$service = $this->get_service_by_id( $service_id );
@@ -223,20 +218,26 @@ class Ajax {
 	}
 
 	/**
-	 * Devuelve el área de cobertura para pintar en el mapa.
-	 * Por ahora es un círculo fijo; se puede cambiar por polígono sin tocar el JS del formulario.
+	 * Devuelve el área de cobertura para pintar en el mapa: el contorno de Chile.
+	 *
+	 * Los anillos viajan como pares [lat, lng], que es lo que espera Leaflet, y
+	 * las bounds solo sirven para encuadrar la vista inicial.
 	 */
 	public function get_coverage_area(): void {
 		$this->verify_request_nonce();
 
+		// Con serialize_precision=17 (lo que trae php-fpm en muchos hostings) cada
+		// coordenada se imprime con 17 dígitos y esta respuesta pasa de ~340 KB a
+		// ~680 KB. Con -1 se usa la representación más corta que se vuelve a leer
+		// idéntica. La petición termina en wp_send_json(), así que no hay nada
+		// más que restaurar.
+		ini_set( 'serialize_precision', '-1' );
+
 		wp_send_json_success(
 			array(
-				'type'     => 'circle',
-				'center'   => array(
-					'lat' => self::COVERAGE_LAT,
-					'lng' => self::COVERAGE_LNG,
-				),
-				'radius_m' => self::COVERAGE_RADIUS_KM * 1000,
+				'type'   => 'polygon',
+				'rings'  => Coverage::rings(),
+				'bounds' => Coverage::bounds(),
 			)
 		);
 	}
@@ -330,8 +331,8 @@ class Ajax {
 			wp_send_json_error( array( 'message' => __( 'Faltan datos de ubicación o servicio.', 'simple-form' ) ), 422 );
 		}
 
-		if ( ! $this->is_within_coverage( $coords ) ) {
-			wp_send_json_error( array( 'message' => __( 'La ubicación está fuera del área de cobertura.', 'simple-form' ) ), 422 );
+		if ( ! Coverage::contains( $coords[0], $coords[1] ) ) {
+			wp_send_json_error( array( 'message' => __( 'La ubicación está fuera de Chile.', 'simple-form' ) ), 422 );
 		}
 
 
@@ -444,19 +445,5 @@ class Ajax {
 				'progress'   => OrderRepository::to_progress( $order ),
 			)
 		);
-	}
-
-	private function distance_km( float $lat1, float $lng1, float $lat2, float $lng2 ): float {
-		$d_lat = deg2rad( $lat2 - $lat1 );
-		$d_lng = deg2rad( $lng2 - $lng1 );
-
-		$a = sin( $d_lat / 2 ) ** 2
-			+ cos( deg2rad( $lat1 ) ) * cos( deg2rad( $lat2 ) ) * sin( $d_lng / 2 ) ** 2;
-
-		return 6371 * 2 * atan2( sqrt( $a ), sqrt( 1 - $a ) );
-	}
-
-	private function is_within_coverage( array $coords ): bool {
-		return $this->distance_km( self::COVERAGE_LAT, self::COVERAGE_LNG, $coords[0], $coords[1] ) <= self::COVERAGE_RADIUS_KM;
 	}
 }

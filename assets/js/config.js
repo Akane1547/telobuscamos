@@ -19,11 +19,11 @@
 			? window.SimpleFormConfig.leaflet
 			: { css: '', js: '' },
 
-		// Centro de mapa por defecto (Santiago) si el navegador no da
-		// geolocalización o aún no hay nada guardado en el paso 2.
+		// Punto de partida del pin (Santiago) y vista inicial. El encuadre
+		// definitivo lo fija el contorno que envía el servidor.
 		defaultCenter: window.SimpleFormConfig && window.SimpleFormConfig.defaultCenter
 			? window.SimpleFormConfig.defaultCenter
-			: { lat: -33.4489, lng: -70.6693, zoom: 12 },
+			: { lat: -33.4489, lng: -70.6693, zoom: 4 },
 
 		// --- Selectores centralizados ---
 		selectors: {

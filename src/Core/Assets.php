@@ -89,10 +89,13 @@ class Assets {
                     'calculatePrice'  => 'simple_form_calculate_price',
                     'getCoverageArea' => 'simple_form_get_coverage_area',
                 ),
+                // Punto de partida del pin (Santiago) y vista inicial antes de
+                // que llegue el contorno. El encuadre definitivo lo fija el
+                // polígono que devuelve get_coverage_area.
                 'defaultCenter' => array(
                     'lat'  => -33.4489,
                     'lng'  => -70.6693,
-                    'zoom' => 12,
+                    'zoom' => 4,
                 ),
                 // Leaflet empaquetado en el plugin: el front carga estas URLs
                 // de forma diferida y no depende de ningún CDN de terceros.

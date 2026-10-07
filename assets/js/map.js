@@ -27,7 +27,7 @@
 	let mapa = null;
 	let marker = null;
 	let radiusCircle = null;   // círculo que representa el radio elegido por el usuario
-	let coverageCircle = null; // área de cobertura que informa el servidor
+	let coverageArea = null; // contorno del área de cobertura que informa el servidor
 	let mapInitialized = false;
 	let priceRequestToken = 0; // evita que una respuesta vieja pise a una más nueva
 
@@ -170,42 +170,47 @@
 	const requestPriceDebounced = debounce( requestPrice, 400 );
 
 	/**
-	 * Pide al servidor el área de cobertura para la posición actual y
-	 * la dibuja. Se llama una vez al posicionar el marcador inicial y
-	 * cada vez que el usuario lo reubica (debounced).
+	 * Pinta el área de cobertura que decide el servidor: el contorno de Chile.
 	 *
-	 * @param {Object} latlng { lat, lng }
+	 * Se pide una sola vez, al construir el mapa. El área ya no sigue al pin:
+	 * es el país, no un radio alrededor del marcador.
 	 */
-	async function requestCoverageArea( latlng ) {
+	async function requestCoverageArea() {
 		try {
-			const result = await SF.request( SF.actions.getCoverageArea, {
-				lat: latlng.lat,
-				lng: latlng.lng,
-			} );
+			const result = await SF.request( SF.actions.getCoverageArea );
 
-			if ( coverageCircle ) {
-				mapa.removeLayer( coverageCircle );
+			if ( coverageArea ) {
+				mapa.removeLayer( coverageArea );
 			}
 
-			if ( 'circle' === result.type ) {
-				coverageCircle = window.L.circle( [ result.center.lat, result.center.lng ], {
-					radius: result.radius_m,
-					color: '#1a1a1a',
-					weight: 1,
-					dashArray: '4 6',
-					fillOpacity: 0.03,
-					interactive: false,
-				} ).addTo( mapa );
+			if ( 'polygon' !== result.type || ! result.rings || ! result.rings.length ) {
+				// eslint-disable-next-line no-console
+				console.error( '[simple-form] El servidor no devolvió un área de cobertura válida.' );
+				return;
 			}
-			// Si en el futuro el servidor devuelve 'polygon', se agrega
-			// otra rama aquí con L.polygon(result.coordinates, {...}).
+
+			coverageArea = window.L.polygon( result.rings, {
+				color: '#1a1a1a',
+				weight: 1,
+				dashArray: '4 6',
+				fillOpacity: 0.03,
+				interactive: false,
+			} ).addTo( mapa );
+
+			// La vista inicial la fija el contorno real, no una constante del front.
+			if ( result.bounds && result.bounds.south != null ) {
+				mapa.fitBounds( [
+					[ result.bounds.south, result.bounds.west ],
+					[ result.bounds.north, result.bounds.east ],
+				] );
+			}
 		} catch ( error ) {
 			// eslint-disable-next-line no-console
 			console.error( '[simple-form] Error obteniendo área de cobertura:', error.message );
 		}
 	}
 
-	const requestCoverageAreaDebounced = debounce( requestCoverageArea, 500 );
+	const requestCoverageAreaDebounced = debounce( requestCoverageArea, 200 );
 
 	/**
 	 * Construye el mapa por primera vez. Solo se llama cuando el
@@ -240,7 +245,7 @@
 
 		storePosition( marker.getLatLng() );
 		updateRadiusDisplay();
-		requestCoverageAreaDebounced( marker.getLatLng() );
+		requestCoverageAreaDebounced();
 
 		marker.on( 'drag', ( e ) => {
 			storePosition( e.target.getLatLng() );
