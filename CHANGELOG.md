@@ -1,5 +1,9 @@
 # Cambios
 
+## 7d0189a - Fase 1: uninstall.php (paso 4)
+
+- **uninstall.php**: al desinstalar borra `wp_sf_orders` y `wp_sf_payment_events`, las opciones `simple_form_services` y `simple_form_db_version`, y los transients de sesión `_transient(_timeout)_sf_client_session_*`; guardia `WP_UNINSTALL_PLUGIN` e inclusión manual de `Database` porque en ese contexto no existe el autoloader del plugin (así los nombres de tabla no se duplican).
+
 ## 3be3da9 - Fase 1: esquema propio (Database, sf_orders y sf_payment_events)
 
 - **src/Database/Database.php**: clase `SimpleForm\Database\Database` con `table_name()`, `create_tables()` vía `dbDelta()` y `maybe_upgrade()`; define `sf_orders` y `sf_payment_events` con los campos de souls.md §12.2, montos CLP en `BIGINT` (nunca float), fechas UTC, snapshot de servicio y precios, y `UNIQUE` en `draft_id` y `external_event_id` (clave de idempotencia).
