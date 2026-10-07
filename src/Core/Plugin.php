@@ -1,0 +1,56 @@
+<?php
+/**
+ * Orquestador del plugin: instancia las clases principales.
+ *
+ * @package SimpleForm\Core
+ */
+
+namespace SimpleForm\Core;
+use SimpleForm\Admin\AdminServices;
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+class Plugin {
+
+
+    /**
+     * Instancia única (Patrón Singleton).
+     *
+     * @var Plugin|null
+     */
+    private static $instance = null;
+
+    /**
+     * Obtiene la instancia única de la clase.
+     */
+    public static function get_instance(): self {
+        if ( null === self::$instance ) {
+            self::$instance = new self();
+        }
+
+        return self::$instance;
+    }
+
+    /**
+     * Constructor privado para prevenir instanciación externa.
+     */
+    private function __construct() {
+        $this->init_hooks();
+    }
+
+    /**
+     * Instancia las clases que registran hooks.
+     */
+    private function init_hooks(): void {
+        $assets = new Assets( SIMPLE_FORM_VERSION );
+        new Ajax();
+        new Shortcode( $assets );
+
+        // Solo instanciar la pantalla de administración si estamos en wp-admin
+        if ( is_admin() ) {
+            new AdminServices();
+        }
+    }
+}
