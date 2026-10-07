@@ -97,4 +97,30 @@ final class OrderStatus {
 
 		return in_array( $to, self::TRANSITIONS[ $from ], true );
 	}
+
+	/**
+	 * Etiqueta visible de un estado, ya traducida.
+	 *
+	 * Los textos del recibo los decide el servidor: el front solo pinta lo que
+	 * recibe. Un estado desconocido devuelve un texto genérico en vez de dejar
+	 * el hueco vacío.
+	 *
+	 * @param string $status Estado interno.
+	 * @return string
+	 */
+	public static function label( string $status ): string {
+		$labels = array(
+			self::DRAFT        => __( 'Pedido sin iniciar', 'simple-form' ),
+			self::PENDING      => __( 'Pago pendiente', 'simple-form' ),
+			self::IN_PROCESS   => __( 'Pago en revisión', 'simple-form' ),
+			self::APPROVED     => __( 'Pago confirmado', 'simple-form' ),
+			self::REJECTED     => __( 'Pago rechazado', 'simple-form' ),
+			self::CANCELLED    => __( 'Pedido cancelado', 'simple-form' ),
+			self::EXPIRED      => __( 'Pedido expirado', 'simple-form' ),
+			self::REFUNDED     => __( 'Pago reembolsado', 'simple-form' ),
+			self::CHARGED_BACK => __( 'Pago con contracargo', 'simple-form' ),
+		);
+
+		return isset( $labels[ $status ] ) ? $labels[ $status ] : __( 'Estado desconocido', 'simple-form' );
+	}
 }

@@ -652,16 +652,41 @@
 }
 
 .pn-receipt__badge {
-	background: linear-gradient(135deg, #43a047 0%, var(--pn-success) 100%);
-	color: #fff;
+	background: linear-gradient(135deg, var(--pn-primary-light) 0%, var(--pn-primary-dark) 100%);
+	color: var(--pn-dark);
 	font-size: 0.8rem;
 	font-weight: 700;
 	padding: 6px 14px;
 	border-radius: var(--pn-radius-pill);
-	box-shadow: 0 4px 10px rgba(46, 125, 50, 0.3);
+	box-shadow: 0 4px 10px rgba(217, 163, 0, 0.3);
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
+}
+
+/* El color sale del estado real del pedido (lo decide el servidor). El color
+   base es el amarillo de marca, que corresponde a pending: el recibo nunca
+   se pinta de verde por defecto. */
+.pn-receipt__badge--approved {
+	background: linear-gradient(135deg, #43a047 0%, var(--pn-success) 100%);
+	color: #fff;
+	box-shadow: 0 4px 10px rgba(46, 125, 50, 0.3);
+}
+
+.pn-receipt__badge--rejected,
+.pn-receipt__badge--cancelled,
+.pn-receipt__badge--expired {
+	background: linear-gradient(135deg, #ef5350 0%, var(--pn-error) 100%);
+	color: #fff;
+	box-shadow: 0 4px 10px rgba(211, 47, 47, 0.3);
+}
+
+.pn-receipt__badge--refunded,
+.pn-receipt__badge--charged_back,
+.pn-receipt__badge--draft {
+	background: #efe9dc;
+	color: var(--pn-text-muted);
+	box-shadow: none;
 }
 
 .pn-receipt__date {

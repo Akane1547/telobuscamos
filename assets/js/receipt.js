@@ -10,6 +10,8 @@
 ( function ( window ) {
 	'use strict';
 
+	const SF = window.SimpleForm;
+
 	const Receipt = {
 
 		/**
@@ -41,12 +43,38 @@
 				}
 			} );
 
+			// La fecha la formatea el servidor; el navegador no la inventa.
 			const dateEl = wrapper.querySelector( '#pn-receipt-date' );
 			if ( dateEl ) {
-				dateEl.textContent = new Date().toLocaleString( 'es-CL' );
+				dateEl.textContent = progress.date || '—';
 			}
+
+			renderBadge( wrapper, progress );
 		},
 	};
+
+	/**
+	 * Pinta el estado del pedido tal como lo reporta el servidor.
+	 *
+	 * El texto llega ya traducido desde PHP; aquí solo se elige el modificador
+	 * de color, y solo si el estado tiene la forma esperada: la clase nunca se
+	 * construye con un valor sin filtrar.
+	 *
+	 * @param {HTMLElement} wrapper
+	 * @param {Object} progress
+	 */
+	function renderBadge( wrapper, progress ) {
+		const badge = wrapper.querySelector( SF.selectors.receiptBadge );
+
+		if ( ! badge ) {
+			return;
+		}
+
+		const status = progress.status || '';
+
+		badge.textContent = progress.status_label || '—';
+		badge.className = 'pn-receipt__badge' + ( /^[a-z_]{1,20}$/.test( status ) ? ' pn-receipt__badge--' + status : '' );
+	}
 
 	window.SimpleFormReceipt = Receipt;
 } )( window );

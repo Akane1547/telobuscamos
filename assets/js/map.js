@@ -33,6 +33,8 @@
 
 	let els = {};
 
+	let currentWrapper = null;
+
 	/**
 	 * Debounce genérico: evita disparar una llamada AJAX en cada pixel
 	 * que se arrastra el slider o el marcador.
@@ -50,6 +52,8 @@
 	}
 
 	function cacheElements( wrapper ) {
+		currentWrapper = wrapper;
+
 		els = {
 			radiusInput: wrapper.querySelector( '#pn-map-radius' ),
 			radiusValueEl: wrapper.querySelector( '.map-plugin__radio-value' ),
@@ -124,6 +128,21 @@
 			if ( els.mapError ) {
 				els.mapError.textContent = '';
 			}
+
+			// El resumen lateral se actualiza en cuanto el servidor confirma el
+			// precio, sin esperar a que el usuario pulse Siguiente.
+			document.dispatchEvent(
+				new CustomEvent( SF.events.priceUpdated, {
+					detail: {
+						wrapper: currentWrapper,
+						step2: {
+							service_label: selectedServiceLabel(),
+							radius_km: parseInt( els.radiusHidden.value, 10 ) || 0,
+							estimated_price: result.price,
+						},
+					},
+				} )
+			);
 		} catch ( error ) {
 			// eslint-disable-next-line no-console
 			console.error( '[simple-form] Error calculando precio:', error.message, error.errors || '' );
@@ -131,6 +150,21 @@
 				els.mapError.textContent = error.message;
 			}
 		}
+	}
+
+	/**
+	 * Texto del plan elegido, que es lo que muestra el resumen.
+	 *
+	 * @return {string}
+	 */
+	function selectedServiceLabel() {
+		if ( ! els.serviceSelect ) {
+			return '';
+		}
+
+		const option = els.serviceSelect.options[ els.serviceSelect.selectedIndex ];
+
+		return option ? option.textContent.trim() : '';
 	}
 
 	const requestPriceDebounced = debounce( requestPrice, 400 );

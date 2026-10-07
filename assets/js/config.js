@@ -36,12 +36,14 @@
 			navNext: '[data-action="next"]',
 			navSubmit: '[data-action="submit"]',
 			feedback: '.pn-form__feedback',
+			receiptBadge: '.pn-receipt__badge',
 			mapContainer: '#map-plugin',
 		},
 
 		// --- Nombres de eventos custom compartidos entre módulos ---
 		events: {
 			stepVisible: 'sf:step-visible', // detail: { step, wrapper }
+			priceUpdated: 'sf:price-updated', // detail: { wrapper, step2 }
 		},
 
 		// Promesa cacheada para no inyectar Leaflet dos veces si el

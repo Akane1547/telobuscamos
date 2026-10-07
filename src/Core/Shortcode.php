@@ -181,7 +181,7 @@ class Shortcode {
 					<section class="pn-step" data-step-panel="4" hidden>
 						<div class="pn-receipt">
 							<div class="pn-receipt__header">
-								<span class="pn-receipt__badge"><?php esc_html_e( '✔ Pago confirmado', 'simple-form' ); ?></span>
+								<span class="pn-receipt__badge pn-receipt__badge--pending"><?php esc_html_e( 'Pago pendiente', 'simple-form' ); ?></span>
 								<span class="pn-receipt__date" id="pn-receipt-date">—</span>
 							</div>
 

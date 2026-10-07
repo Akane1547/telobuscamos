@@ -169,5 +169,11 @@
 		},
 	};
 
+	// El resumen lateral se actualiza en cuanto el servidor devuelve un precio
+	// nuevo (evento emitido por map.js), sin esperar a que se guarde el paso.
+	document.addEventListener( window.SimpleForm.events.priceUpdated, ( event ) => {
+		UI.updateSummary( event.detail.wrapper, event.detail.step2 );
+	} );
+
 	window.SimpleFormUI = UI;
 } )( window );

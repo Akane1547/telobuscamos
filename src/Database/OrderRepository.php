@@ -142,9 +142,10 @@ final class OrderRepository {
 	 * @return array current_step, step1, step2, step3.
 	 */
 	public static function to_progress( array $order ): array {
-		$step1 = null;
-		$step2 = null;
-		$step3 = null;
+		$status = (string) $order['status'];
+		$step1  = null;
+		$step2  = null;
+		$step3  = null;
 
 		if ( self::is_step_complete( $order, 1 ) ) {
 			$step1 = array(
@@ -175,9 +176,38 @@ final class OrderRepository {
 
 		return array(
 			'current_step' => max( 1, min( 4, (int) $order['current_step'] ) ),
+			'status'       => $status,
+			'status_label' => OrderStatus::label( $status ),
+			'date'         => self::receipt_date( $order ),
 			'step1'        => $step1,
 			'step2'        => $step2,
 			'step3'        => $step3,
 		);
+	}
+
+	/**
+	 * Fecha que muestra el recibo, ya formateada por el servidor.
+	 *
+	 * Es la fecha del pago cuando existe; mientras no haya pago, la de
+	 * creación del pedido. Se guarda en UTC y se formatea en la zona horaria
+	 * y con el formato configurados en el sitio.
+	 *
+	 * @param array $order
+	 * @return string Cadena vacía si la fecha guardada no es interpretable.
+	 */
+	private static function receipt_date( array $order ): string {
+		$utc = isset( $order['paid_at'] ) ? (string) $order['paid_at'] : '';
+
+		if ( '' === $utc ) {
+			$utc = (string) $order['created_at'];
+		}
+
+		$timestamp = strtotime( $utc . ' UTC' );
+
+		if ( false === $timestamp ) {
+			return '';
+		}
+
+		return wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp );
 	}
 }
