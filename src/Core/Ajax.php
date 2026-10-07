@@ -7,6 +7,9 @@
 
 namespace SimpleForm\Core;
 
+use SimpleForm\Database\OrderRepository;
+use SimpleForm\Payments\OrderStatus;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -115,37 +118,75 @@ class Ajax {
 	}
 
 	/**
-	 * Única fórmula de precio del plugin.
+	 * Precios del servicio en CLP entero.
+	 *
+	 * La opción los guarda como float, pero el dinero del plugin es entero
+	 * (souls.md §8.3). Se redondea una sola vez, aquí: ese valor redondeado es
+	 * el que se calcula y el que se guarda como snapshot en el pedido.
+	 *
+	 * @param array $service
+	 * @return array [ precio base, precio por km ].
 	 */
-	private function compute_price( array $service, int $radius_km ): float {
-		return (float) ( $service['base_price'] ?? 0 ) + ( (float) ( $service['price_per_km'] ?? 0 ) * $radius_km );
+	private function service_prices( array $service ): array {
+		return array(
+			(int) round( (float) ( $service['base_price'] ?? 0 ) ),
+			(int) round( (float) ( $service['price_per_km'] ?? 0 ) ),
+		);
 	}
 
 	/**
-	 * Obtiene el progreso desde el transient mediante Session::get() o crea uno nuevo.
+	 * Única fórmula de precio del plugin. CLP entero, nunca float.
+	 */
+	private function compute_price( int $base_price, int $price_per_km, int $radius_km ): int {
+		return $base_price + ( $price_per_km * $radius_km );
+	}
+
+	/**
+	 * Lee y sanitiza el id de sesión del POST.
+	 */
+	private function read_session_id(): string {
+		$raw = isset( $_POST['session_id'] ) ? sanitize_text_field( wp_unslash( $_POST['session_id'] ) ) : '';
+
+		return Session::sanitize_id( $raw );
+	}
+
+	/**
+	 * Resuelve la sesión a su pedido: el puntero del transient y la fila.
+	 *
+	 * @param string $session_id
+	 * @return array|null
+	 */
+	private function find_order_by_session( string $session_id ): ?array {
+		if ( '' === $session_id ) {
+			return null;
+		}
+
+		$draft_id = Session::find_draft_id( $session_id );
+
+		if ( null === $draft_id ) {
+			return null;
+		}
+
+		return OrderRepository::find_by_draft_id( $draft_id );
+	}
+
+	/**
+	 * Obtiene el progreso leyendo el pedido persistido.
 	 */
 	public function get_progress(): void {
 		$this->verify_request_nonce();
 
-		$raw_session_id = isset( $_POST['session_id'] ) ? sanitize_text_field( wp_unslash( $_POST['session_id'] ) ) : '';
-		$session_id     = Session::sanitize_id( $raw_session_id );
+		$session_id = $this->read_session_id();
+		$order      = $this->find_order_by_session( $session_id );
 
-		$session_data = ! empty( $session_id ) ? Session::get( $session_id ) : null;
-
-		if ( ! $session_data ) {
-			wp_send_json_error( array( 'message' => 'No hay sesión guardada.' ), 404 );
+		if ( null === $order ) {
+			wp_send_json_error( array( 'message' => __( 'No hay sesión guardada.', 'simple-form' ) ), 404 );
 		}
 
-		$current_step = min( 4, max( 1, (int) ( $session_data['current_step'] ?? 1 ) ) );
 		wp_send_json_success(
 			array(
 				'session_id' => $session_id,
-				'progress'   => array(
-					'current_step' => $current_step,
-					'step1'        => $session_data['step1'] ?? null,
-					'step2'        => $session_data['step2'] ?? null,
-					'step3'        => $session_data['step3'] ?? null,
-				),
+				'progress'   => OrderRepository::to_progress( $order ),
 			)
 		);
 	}
@@ -161,7 +202,7 @@ class Ajax {
 		$radius_km  = $this->read_radius_km();
 
 		if ( empty( $service_id ) || null === $coords || 0 === $radius_km ) {
-			wp_send_json_error( array( 'message' => 'Datos inválidos para calcular el precio.' ), 422 );
+			wp_send_json_error( array( 'message' => __( 'Datos inválidos para calcular el precio.', 'simple-form' ) ), 422 );
 		}
 
 		if ( ! $this->is_within_coverage( $coords ) ) {
@@ -171,11 +212,13 @@ class Ajax {
 		$service = $this->get_service_by_id( $service_id );
 
 		if ( null === $service ) {
-			wp_send_json_error( array( 'message' => 'Servicio no disponible.' ), 404 );
+			wp_send_json_error( array( 'message' => __( 'Servicio no disponible.', 'simple-form' ) ), 404 );
 		}
 
+		list( $base_price, $price_per_km ) = $this->service_prices( $service );
+
 		wp_send_json_success(
-			array( 'price' => $this->compute_price( $service, $radius_km ) )
+			array( 'price' => $this->compute_price( $base_price, $price_per_km, $radius_km ) )
 		);
 	}
 
@@ -198,51 +241,67 @@ class Ajax {
 		);
 	}
 
-		/**
-		 * Guarda el Paso 1 en el transient mediante Session::save_step().
-		 */
+	/**
+	 * Guarda el Paso 1 en el pedido persistido.
+	 */
 	public function save_step1(): void {
 		$this->verify_request_nonce();
 
-		$raw_session_id = isset( $_POST['session_id'] ) ? sanitize_text_field( wp_unslash( $_POST['session_id'] ) ) : '';
-		$session_id     = Session::sanitize_id( $raw_session_id );
+		$session_id = $this->read_session_id();
 
 		$name  = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
 		$email = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
 		$phone = sanitize_text_field( wp_unslash( $_POST['phone'] ?? '' ) );
 
-		if ( empty( $name ) || ! is_email( $email ) || empty( $phone ) ) {
-			wp_send_json_error( array( 'message' => 'Por favor completa todos los campos requeridos.' ), 422 );
+		if ( '' === $name || ! is_email( $email ) || '' === $phone ) {
+			wp_send_json_error( array( 'message' => __( 'Por favor completa todos los campos requeridos.', 'simple-form' ) ), 422 );
 		}
 
-		// El transient se crea recién con la entrada ya validada.
-		if ( empty( $session_id ) || null === Session::get( $session_id ) ) {
-			$session_id = Session::create();
-		}
-
-		$payload = array(
+		$customer = array(
 			'name'        => $name,
 			'email'       => $email,
 			'phone'       => $phone,
 			'description' => sanitize_textarea_field( wp_unslash( $_POST['description'] ?? '' ) ),
 		);
 
-		// 1. Guardar en el Transient
-		$updated_data = Session::save_step( $session_id, 1, $payload );
+		$order = $this->find_order_by_session( $session_id );
 
-		if ( null === $updated_data ) {
-			wp_send_json_error( array( 'message' => 'Error al guardar en el transient.' ), 500 );
+		if ( null !== $order ) {
+			// Mismo pedido: se reescribe el paso 1, sin crear filas nuevas.
+			OrderRepository::update(
+				(int) $order['id'],
+				array(
+					'full_name'    => $customer['name'],
+					'email'        => $customer['email'],
+					'phone'        => $customer['phone'],
+					'description'  => $customer['description'],
+					'current_step' => max( 2, (int) $order['current_step'] ),
+				)
+			);
+
+			Session::refresh( $session_id );
+		} else {
+			// El pedido se crea recién con la entrada ya validada (B-06).
+			$draft_id = OrderRepository::create_draft( $customer );
+
+			if ( '' === $draft_id ) {
+				wp_send_json_error( array( 'message' => __( 'No se pudo crear el pedido.', 'simple-form' ) ), 500 );
+			}
+
+			$session_id = Session::create( $draft_id );
 		}
 
-		// 2. Responder con el JSON estructurado para stepper.js
+		$order = $this->find_order_by_session( $session_id );
+
+		if ( null === $order ) {
+			wp_send_json_error( array( 'message' => __( 'No se pudo guardar el pedido.', 'simple-form' ) ), 500 );
+		}
+
 		wp_send_json_success(
 			array(
-				'message'    => 'Paso 1 guardado correctamente.',
+				'message'    => __( 'Paso 1 guardado correctamente.', 'simple-form' ),
 				'session_id' => $session_id,
-				'progress'   => array(
-					'current_step' => 2,
-					'step1'        => $payload,
-				),
+				'progress'   => OrderRepository::to_progress( $order ),
 			)
 		);
 	}
@@ -250,20 +309,14 @@ class Ajax {
 	public function save_step2(): void {
 		$this->verify_request_nonce();
 
-		$raw_session_id = isset( $_POST['session_id'] ) ? sanitize_text_field( wp_unslash( $_POST['session_id'] ) ) : '';
-		$session_id     = Session::sanitize_id( $raw_session_id );
+		$session_id = $this->read_session_id();
+		$order      = $this->find_order_by_session( $session_id );
 
-		if ( empty( $session_id ) ) {
-			wp_send_json_error( array( 'message' => 'Sesión no válida.' ), 400 );
-		}
-
-		$session = Session::get( $session_id );
-
-		if ( null === $session ) {
+		if ( null === $order ) {
 			wp_send_json_error( array( 'message' => __( 'Sesión expirada. Recarga el formulario.', 'simple-form' ) ), 410 );
 		}
 
-		if ( ! Session::previous_steps_valid( $session, 2 ) ) {
+		if ( ! OrderRepository::is_step_complete( $order, 1 ) ) {
 			wp_send_json_error( array( 'message' => __( 'Debes completar el paso 1 antes de continuar.', 'simple-form' ) ), 403 );
 		}
 
@@ -274,7 +327,7 @@ class Ajax {
 
 
 		if ( empty( $service_id ) || null === $coords || 0 === $radius_km ) {
-			wp_send_json_error( array( 'message' => 'Faltan datos de ubicación o servicio.' ), 422 );
+			wp_send_json_error( array( 'message' => __( 'Faltan datos de ubicación o servicio.', 'simple-form' ) ), 422 );
 		}
 
 		if ( ! $this->is_within_coverage( $coords ) ) {
@@ -285,87 +338,110 @@ class Ajax {
 		$service = $this->get_service_by_id( $service_id );
 
 		if ( null === $service ) {
-			wp_send_json_error( array( 'message' => 'Servicio no disponible.' ), 404 );
+			wp_send_json_error( array( 'message' => __( 'Servicio no disponible.', 'simple-form' ) ), 404 );
 		}
 
-		$payload = array(
-			'service_id'      => $service_id,
-			'service_label'   => sanitize_text_field( $service['label'] ?? $service['id'] ),
-			'lat'             => $coords[0],
-			'lng'             => $coords[1],
-			'radius_km'       => $radius_km,
-			'estimated_price' => $this->compute_price( $service, $radius_km ),
+		list( $base_price, $price_per_km ) = $this->service_prices( $service );
+
+		// Snapshot del servicio y de sus precios: editar el servicio después no
+		// puede reescribir este pedido. El monto lo calcula el servidor.
+		OrderRepository::update(
+			(int) $order['id'],
+			array(
+				'service_id'           => $service_id,
+				'service_label'        => sanitize_text_field( $service['label'] ?? $service['id'] ),
+				'service_base_price'   => $base_price,
+				'service_price_per_km' => $price_per_km,
+				'lat'                  => $coords[0],
+				'lng'                  => $coords[1],
+				'radius_km'            => $radius_km,
+				'amount'               => $this->compute_price( $base_price, $price_per_km, $radius_km ),
+				'current_step'         => max( 3, (int) $order['current_step'] ),
+			)
 		);
 
-		// Guardar en el Transient
-		$updated_data = Session::save_step( $session_id, 2, $payload );
+		Session::refresh( $session_id );
 
-		if ( null === $updated_data ) {
-			wp_send_json_error( array( 'message' => 'Sesión expirada. Recarga el formulario.' ), 410 );
+		$order = $this->find_order_by_session( $session_id );
+
+		if ( null === $order ) {
+			wp_send_json_error( array( 'message' => __( 'No se pudo guardar el pedido.', 'simple-form' ) ), 500 );
 		}
 
 		wp_send_json_success(
 			array(
-				'message'    => 'Paso 2 guardado correctamente.',
+				'message'    => __( 'Paso 2 guardado correctamente.', 'simple-form' ),
 				'session_id' => $session_id,
-				'progress'   => array(
-					'current_step' => 3,
-					'step2'        => $payload,
-				),
+				'progress'   => OrderRepository::to_progress( $order ),
 			)
 		);
 	}
 
 	/**
-	 * Guarda el Paso 3 y realiza la verificación final del transient.
+	 * Guarda el Paso 3: valida el medio de pago y deja el pedido en pending.
+	 *
+	 * Nunca marca el pedido como pagado: eso solo lo hace la pasarela.
 	 */
 	public function save_step3(): void {
 		$this->verify_request_nonce();
 
-		$raw_session_id = isset( $_POST['session_id'] ) ? sanitize_text_field( wp_unslash( $_POST['session_id'] ) ) : '';
-		$session_id     = Session::sanitize_id( $raw_session_id );
-		$session        = ! empty( $session_id ) ? Session::get( $session_id ) : null;
+		$session_id = $this->read_session_id();
+		$order      = $this->find_order_by_session( $session_id );
 
-		if ( null === $session ) {
-			wp_send_json_error( array( 'message' => 'Sesión no encontrada o expirada.' ), 400 );
+		if ( null === $order ) {
+			wp_send_json_error( array( 'message' => __( 'Sesión no encontrada o expirada.', 'simple-form' ) ), 410 );
 		}
 
-		if ( ! Session::previous_steps_valid( $session, 3 ) ) {
-			wp_send_json_error( array( 'message' => 'Debes completar los pasos 1 y 2 antes de finalizar.' ), 403 );
+		if ( ! OrderRepository::is_step_complete( $order, 1 ) || ! OrderRepository::is_step_complete( $order, 2 ) ) {
+			wp_send_json_error( array( 'message' => __( 'Debes completar los pasos 1 y 2 antes de finalizar.', 'simple-form' ) ), 403 );
 		}
 
-		$service_id = $session['step2']['service_id'] ?? '';
-		$radius_km  = (int) ( $session['step2']['radius_km'] ?? 0 );
+		$payment_method = isset( $_POST['payment_method'] ) ? sanitize_key( wp_unslash( $_POST['payment_method'] ) ) : '';
 
-		$service = $this->get_service_by_id( $service_id );
-
-		if ( null === $service ) {
-			wp_send_json_error( array( 'message' => 'El servicio guardado ya no se encuentra disponible.' ), 409 );
+		if ( '' === $payment_method ) {
+			wp_send_json_error( array( 'message' => __( 'Selecciona un medio de pago.', 'simple-form' ) ), 422 );
 		}
 
-		$final_price = $this->compute_price( $service, $radius_km );
-		
-		$payload = array(
-			'payment_method' => sanitize_text_field( wp_unslash( $_POST['payment_method'] ?? 'mercadopago' ) ),
-			'final_price'    => $final_price,
+		// El monto se recalcula con el snapshot guardado, nunca con lo que envíe el cliente.
+		$amount = $this->compute_price(
+			(int) $order['service_base_price'],
+			(int) $order['service_price_per_km'],
+			(int) $order['radius_km']
 		);
 
-		$updated = Session::save_step( $session_id, 3, $payload );
+		$fields = array(
+			'payment_method' => $payment_method,
+			'amount'         => $amount,
+			'current_step'   => 4,
+		);
 
-		if ( null === $updated ) {
-			wp_send_json_error( array( 'message' => 'No se pudo guardar el paso 3.' ), 500 );
+		// draft -> pending y rejected -> pending (reintento). approved nunca
+		// vuelve a pending: eso lo decide OrderStatus, no este endpoint.
+		if ( OrderStatus::PENDING !== $order['status'] ) {
+			if ( ! OrderStatus::can_transition( (string) $order['status'], OrderStatus::PENDING ) ) {
+				wp_send_json_error( array( 'message' => __( 'El pedido ya no admite un nuevo pago.', 'simple-form' ) ), 409 );
+			}
+
+			$fields['status'] = OrderStatus::PENDING;
+		}
+
+		if ( ! OrderRepository::update( (int) $order['id'], $fields ) ) {
+			wp_send_json_error( array( 'message' => __( 'No se pudo guardar el paso 3.', 'simple-form' ) ), 500 );
+		}
+
+		Session::refresh( $session_id );
+
+		$order = $this->find_order_by_session( $session_id );
+
+		if ( null === $order ) {
+			wp_send_json_error( array( 'message' => __( 'No se pudo guardar el pedido.', 'simple-form' ) ), 500 );
 		}
 
 		wp_send_json_success(
 			array(
-				'message'    => 'Formulario completado exitosamente.',
+				'message'    => __( 'Formulario completado exitosamente.', 'simple-form' ),
 				'session_id' => $session_id,
-				'progress'   => array(
-					'current_step' => 4,
-					'step1'        => $updated['step1'] ?? null,
-					'step2'        => $updated['step2'] ?? null,
-					'step3'        => $payload,
-				),
+				'progress'   => OrderRepository::to_progress( $order ),
 			)
 		);
 	}
