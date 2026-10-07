@@ -1,10 +1,49 @@
 /* ==========================================================================
    Plugin Name - Formulario de pago
-   Tipografía: Poppins (Google Fonts, con fallback del sistema por si
-   el theme bloquea fuentes externas)
+   Tipografía: Poppins empaquetada en el propio plugin (assets/fonts/,
+   subconjunto latin). Sin dependencias de terceros: este CSS ya no pide
+   nada a Google. Tipografía bajo SIL Open Font License 1.1.
    ========================================================================== */
 
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap");
+@font-face {
+	font-family: 'Poppins';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('../fonts/poppins-400.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('../fonts/poppins-500.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('../fonts/poppins-600.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('../fonts/poppins-700.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: normal;
+	font-weight: 800;
+	font-display: swap;
+	src: url('../fonts/poppins-800.woff2') format('woff2');
+}
 
 .pn-form-wrapper {
 	--pn-primary: #f5b800;              /* Amarillo de marca */

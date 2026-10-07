@@ -18,21 +18,31 @@ class Assets {
         add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
     }
 
-    private function asset_version( string $relative_path ): string {
+    /**
+     * Versión del asset para el cache-busting.
+     *
+     * Público y estático para que el admin use la misma regla que el front
+     * en vez de duplicarla.
+     *
+     * @param string $relative_path Ruta relativa al directorio del plugin.
+     * @param string $version       Versión a usar cuando no aplica filemtime().
+     * @return string
+     */
+    public static function asset_version( string $relative_path, string $version ): string {
         $full_path = SIMPLE_FORM_PATH . $relative_path;
 
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG && file_exists( $full_path ) ) {
             return (string) filemtime( $full_path );
         }
 
-        return $this->version;
+        return $version;
     }
     public function register_assets(): void {
         wp_register_style(
             self::HANDLE_STYLE,
             SIMPLE_FORM_URL . 'assets/css/form.css',
             array(),
-            $this->asset_version( 'assets/css/form.css' )
+            self::asset_version( 'assets/css/form.css', $this->version )
         );
 
         $modules = array(
@@ -51,7 +61,7 @@ class Assets {
                 'simple-form-' . $name,
                 SIMPLE_FORM_URL . $relative_path,
                 $deps,
-                $this->asset_version( $relative_path ),
+                self::asset_version( $relative_path, $this->version ),
                 true
             );
         }
@@ -83,6 +93,12 @@ class Assets {
                     'lat'  => -33.4489,
                     'lng'  => -70.6693,
                     'zoom' => 12,
+                ),
+                // Leaflet empaquetado en el plugin: el front carga estas URLs
+                // de forma diferida y no depende de ningún CDN de terceros.
+                'leaflet' => array(
+                    'css' => SIMPLE_FORM_URL . 'assets/vendor/leaflet/leaflet.css',
+                    'js'  => SIMPLE_FORM_URL . 'assets/vendor/leaflet/leaflet.js',
                 ),
             )
         );

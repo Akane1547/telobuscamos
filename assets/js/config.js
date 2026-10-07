@@ -4,18 +4,20 @@
 
 	const STORAGE_KEY = 'sf_session_id';
 
-	// URLs del CDN de Leaflet. Se cargan de forma perezosa (lazy) solo
-	// cuando el usuario llega al paso del mapa — así el paso 1 (el que
-	// ve el 100% de los visitantes) no paga el costo de esta librería.
-	const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-	const LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-
 	const SimpleForm = {
 
 		// --- Config del backend (wp_localize_script) ---
 		ajaxUrl: window.SimpleFormConfig ? window.SimpleFormConfig.ajaxUrl : '',
 		nonce: window.SimpleFormConfig ? window.SimpleFormConfig.nonce : '',
 		actions: window.SimpleFormConfig ? window.SimpleFormConfig.actions : {},
+
+		// Leaflet va empaquetado en el plugin (assets/vendor/leaflet/): el
+		// navegador ya no pide nada a un CDN de terceros. Las URLs las entrega
+		// el servidor, y se siguen cargando de forma diferida solo al llegar
+		// al paso del mapa.
+		leaflet: window.SimpleFormConfig && window.SimpleFormConfig.leaflet
+			? window.SimpleFormConfig.leaflet
+			: { css: '', js: '' },
 
 		// Centro de mapa por defecto (Santiago) si el navegador no da
 		// geolocalización o aún no hay nada guardado en el paso 2.
@@ -62,18 +64,23 @@
 			}
 
 			this._leafletPromise = new Promise( ( resolve, reject ) => {
-				if ( ! document.querySelector( `link[href="${ LEAFLET_CSS }"]` ) ) {
+				if ( ! this.leaflet.js ) {
+					reject( new Error( 'SimpleFormConfig.leaflet no llegó desde el servidor.' ) );
+					return;
+				}
+
+				if ( ! document.querySelector( `link[href="${ this.leaflet.css }"]` ) ) {
 					const link = document.createElement( 'link' );
 					link.rel = 'stylesheet';
-					link.href = LEAFLET_CSS;
+					link.href = this.leaflet.css;
 					document.head.appendChild( link );
 				}
 
 				const script = document.createElement( 'script' );
-				script.src = LEAFLET_JS;
+				script.src = this.leaflet.js;
 				script.async = true;
 				script.onload = () => resolve();
-				script.onerror = () => reject( new Error( 'No se pudo cargar Leaflet desde el CDN.' ) );
+				script.onerror = () => reject( new Error( 'No se pudo cargar Leaflet desde el propio plugin.' ) );
 				document.head.appendChild( script );
 			} );
 
