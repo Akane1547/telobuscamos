@@ -1,5 +1,13 @@
 # Cambios
 
+## 3be3da9 - Fase 1: esquema propio (Database, sf_orders y sf_payment_events)
+
+- **src/Database/Database.php**: clase `SimpleForm\Database\Database` con `table_name()`, `create_tables()` vía `dbDelta()` y `maybe_upgrade()`; define `sf_orders` y `sf_payment_events` con los campos de souls.md §12.2, montos CLP en `BIGINT` (nunca float), fechas UTC, snapshot de servicio y precios, y `UNIQUE` en `draft_id` y `external_event_id` (clave de idempotencia).
+- **src/Activation/Activate.php**: `create_tables()` deja de ser un placeholder y delega en `Database::create_tables()`, para que la activación y la migración en caliente usen la misma definición.
+- **src/Core/Plugin.php**: en `plugins_loaded` se comprueba `simple_form_db_version` contra `Database::DB_VERSION` y se migra si no coinciden.
+- **src/Database/index.php**: guardia "Silence is golden" del directorio.
+- **src/Database/class-database.php** (eliminado): esqueleto inalcanzable por el autoloader (namespace `SimpleForm\Core` en `src/Database/`) y roto (`$table` y `$charset` sin definir, `require` de `upgrade.php` sin la "s").
+
 ## 5e48677 - Fase 1: máquina de estados del pedido (OrderStatus)
 
 - **src/Payments/OrderStatus.php**: los 9 estados internos del pedido y un único mapa de transiciones del que salen `all()`, `is_valid()`, `is_final()` y `can_transition()`; `approved` no vuelve a `pending` y `draft` no puede saltar a `approved`, así que `save_step3` no tiene forma de marcar un pedido como pagado.
