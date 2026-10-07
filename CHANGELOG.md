@@ -1,5 +1,25 @@
 # Cambios
 
+## 463cf3f - Fix: el recibo muestra el estado y la fecha reales, y el resumen se actualiza en vivo
+
+- **src/Payments/OrderStatus.php**: nuevo `label()`, la etiqueta traducida de cada estado, para que el front no tenga que decidir textos.
+- **src/Database/OrderRepository.php**: `to_progress()` incorpora `status`, `status_label` y `date`; `receipt_date()` formatea en la zona horaria y con el formato del sitio, usando `paid_at` si existe y `created_at` mientras no haya pago.
+- **src/Core/Shortcode.php**: el badge nace en "Pago pendiente" en lugar de "Pago confirmado", para que un fallo de JS no anuncie un pago inexistente.
+- **assets/js/receipt.js**: pinta el badge desde `status`/`status_label` (validando la forma del estado antes de usarlo como clase) y la fecha desde el servidor; deja de generar la fecha en el navegador.
+- **assets/js/map.js**: emite `sf:price-updated` en cuanto el servidor confirma un precio.
+- **assets/js/ui.js**: escucha ese evento y refresca el resumen lateral sin esperar a que se guarde el paso.
+- **assets/js/config.js**: selector `receiptBadge` y evento `priceUpdated`.
+- **assets/css/form.css**: modificadores del badge por estado; el color base pasa a ser el de `pending` y `--approved` conserva el verde original.
+
+## afa3787 - Fix: planes administrables en el admin y assets sin CDN de terceros
+
+- **src/Admin/AdminServices.php**: el admin permite añadir y eliminar filas de planes (los índices no se reutilizan, así que borrar no renumera), guarda las tarifas en CLP entero (`absint` + `round`, `step="1"`), descarta filas sin ID, IDs duplicados, filas que no son arrays y valores no numéricos, y encola su JS solo en su pantalla.
+- **assets/js/admin-services.js** (nuevo): clona la fila modelo, sustituye el marcador `__NEXT__` por el índice correspondiente y elimina filas. La fila modelo vive fuera del formulario, así que nunca se envía.
+- **assets/fonts/poppins-*.woff2** y **assets/css/form.css**: Poppins empaquetada (5 pesos, subconjunto latin) y se elimina el `@import` a Google Fonts.
+- **assets/vendor/leaflet/**: Leaflet 1.9.4 empaquetado con su CSS y sus imágenes.
+- **assets/js/config.js**: Leaflet se carga desde las URLs que entrega el servidor; desaparecen las constantes del CDN.
+- **src/Core/Assets.php**: `SimpleFormConfig` publica las URLs de Leaflet y `asset_version()` pasa a público y estático para que el admin reuse la regla de cache-busting.
+
 ## 51876b0 - Fase 2: pasos validados contra la base de datos
 
 - **src/Core/Session.php**: el transient deja de guardar datos del cliente y pasa a ser un puntero hacia el `draft_id` del pedido (2 horas renovables por actividad); desaparecen `save_step()`, `get()` y `previous_steps_valid()`. Se conserva `user_id` para la comprobación de propiedad entre usuarios autenticados.
