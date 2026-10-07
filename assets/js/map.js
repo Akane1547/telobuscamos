@@ -146,9 +146,25 @@
 		} catch ( error ) {
 			// eslint-disable-next-line no-console
 			console.error( '[simple-form] Error calculando precio:', error.message, error.errors || '' );
+
 			if ( els.mapError ) {
 				els.mapError.textContent = error.message;
 			}
+
+			// Sin precio válido no puede quedar a la vista el anterior: el paso 2 y
+			// el resumen afirmarían un monto que no es de esta ubicación. El monto
+			// que se guarda lo recalcula el servidor igualmente.
+			els.priceValueEl.textContent = '$0';
+			els.priceHidden.value = 0;
+
+			document.dispatchEvent(
+				new CustomEvent( SF.events.priceUpdated, {
+					detail: {
+						wrapper: currentWrapper,
+						step2: { estimated_price: 0 },
+					},
+				} )
+			);
 		}
 	}
 
@@ -183,13 +199,17 @@
 				mapa.removeLayer( coverageArea );
 			}
 
-			if ( 'polygon' !== result.type || ! result.rings || ! result.rings.length ) {
+			if ( 'polygon' !== result.type || ! result.outline || ! result.outline.length ) {
 				// eslint-disable-next-line no-console
 				console.error( '[simple-form] El servidor no devolvió un área de cobertura válida.' );
 				return;
 			}
 
-			coverageArea = window.L.polygon( result.rings, {
+			// Cada anillo va envuelto en su propio polígono: L.polygon() trata los
+			// anillos siguientes como agujeros del primero, y Chile es un
+			// multipolígono (continente, Tierra del Fuego, archipiélagos), no un
+			// continente agujereado.
+			coverageArea = window.L.polygon( result.outline.map( ( ring ) => [ ring ] ), {
 				color: '#1a1a1a',
 				weight: 1,
 				dashArray: '4 6',

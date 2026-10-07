@@ -220,24 +220,25 @@ class Ajax {
 	/**
 	 * Devuelve el área de cobertura para pintar en el mapa: el contorno de Chile.
 	 *
-	 * Los anillos viajan como pares [lat, lng], que es lo que espera Leaflet, y
-	 * las bounds solo sirven para encuadrar la vista inicial.
+	 * Viaja el contorno de dibujo (1:50m), no el de validación: los anillos van
+	 * como pares [lat, lng], que es lo que espera Leaflet, y las bounds solo
+	 * sirven para encuadrar la vista inicial.
 	 */
 	public function get_coverage_area(): void {
 		$this->verify_request_nonce();
 
 		// Con serialize_precision=17 (lo que trae php-fpm en muchos hostings) cada
-		// coordenada se imprime con 17 dígitos y esta respuesta pasa de ~340 KB a
-		// ~680 KB. Con -1 se usa la representación más corta que se vuelve a leer
+		// coordenada se imprime con 17 dígitos y esta respuesta pasa de ~40 KB a
+		// ~80 KB. Con -1 se usa la representación más corta que se vuelve a leer
 		// idéntica. La petición termina en wp_send_json(), así que no hay nada
 		// más que restaurar.
 		ini_set( 'serialize_precision', '-1' );
 
 		wp_send_json_success(
 			array(
-				'type'   => 'polygon',
-				'rings'  => Coverage::rings(),
-				'bounds' => Coverage::bounds(),
+				'type'    => 'polygon',
+				'outline' => Coverage::outline(),
+				'bounds'  => Coverage::bounds(),
 			)
 		);
 	}

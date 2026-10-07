@@ -34,11 +34,25 @@ final class Coverage {
 	const TOLERANCE_KM = 2.0;
 
 	/**
-	 * Anillos del contorno, en caché por petición.
+	 * Archivo de datos decodificado, en caché por petición.
+	 *
+	 * @var array|null
+	 */
+	private static $data = null;
+
+	/**
+	 * Anillos de validación, en caché por petición.
 	 *
 	 * @var array|null
 	 */
 	private static $rings = null;
+
+	/**
+	 * Anillos de dibujo, en caché por petición.
+	 *
+	 * @var array|null
+	 */
+	private static $outline = null;
 
 	/**
 	 * @var array|null
@@ -73,7 +87,46 @@ final class Coverage {
 	}
 
 	/**
-	 * Anillos del contorno, cada uno como lista de pares [lat, lng].
+	 * Contenido del archivo de datos, decodificado una sola vez por petición.
+	 *
+	 * @return array
+	 */
+	private static function data(): array {
+		if ( null !== self::$data ) {
+			return self::$data;
+		}
+
+		self::$data = array();
+
+		$file = SIMPLE_FORM_PATH . self::DATA_FILE;
+
+		if ( ! is_readable( $file ) ) {
+			return self::$data;
+		}
+
+		$raw = json_decode( (string) file_get_contents( $file ), true );
+
+		if ( is_array( $raw ) ) {
+			self::$data = $raw;
+		}
+
+		return self::$data;
+	}
+
+	/**
+	 * Una sección del archivo de datos, o array vacío si falta.
+	 *
+	 * @param string $key
+	 * @return array
+	 */
+	private static function section( string $key ): array {
+		$data = self::data();
+
+		return ( ! empty( $data[ $key ] ) && is_array( $data[ $key ] ) ) ? $data[ $key ] : array();
+	}
+
+	/**
+	 * Anillos de validación (1:10m), cada uno como lista de pares [lat, lng].
 	 *
 	 * Devuelve un array vacío si el archivo de datos no se puede leer: sin
 	 * contorno no se acepta ninguna ubicación, que es el lado seguro.
@@ -85,21 +138,28 @@ final class Coverage {
 			return self::$rings;
 		}
 
-		self::$rings = array();
-
-		$file = SIMPLE_FORM_PATH . self::DATA_FILE;
-
-		if ( ! is_readable( $file ) ) {
-			return self::$rings;
-		}
-
-		$raw = json_decode( (string) file_get_contents( $file ), true );
-
-		if ( is_array( $raw ) && ! empty( $raw['rings'] ) && is_array( $raw['rings'] ) ) {
-			self::$rings = $raw['rings'];
-		}
+		self::$rings = self::section( 'rings' );
 
 		return self::$rings;
+	}
+
+	/**
+	 * Anillos de dibujo (1:50m), los que se envían al navegador.
+	 *
+	 * El mapa no necesita la precisión de la validación: este contorno pesa unas
+	 * ocho veces menos y a la escala en que se dibuja el país no se distingue.
+	 * Para decidir si una ubicación se acepta, siempre rings().
+	 *
+	 * @return array
+	 */
+	public static function outline(): array {
+		if ( null !== self::$outline ) {
+			return self::$outline;
+		}
+
+		self::$outline = self::section( 'outline' );
+
+		return self::$outline;
 	}
 
 	/**
@@ -115,19 +175,7 @@ final class Coverage {
 			return self::$bounds;
 		}
 
-		self::$bounds = array();
-
-		$file = SIMPLE_FORM_PATH . self::DATA_FILE;
-
-		if ( ! is_readable( $file ) ) {
-			return self::$bounds;
-		}
-
-		$raw = json_decode( (string) file_get_contents( $file ), true );
-
-		if ( is_array( $raw ) && ! empty( $raw['focus_bounds'] ) && is_array( $raw['focus_bounds'] ) ) {
-			self::$bounds = $raw['focus_bounds'];
-		}
+		self::$bounds = self::section( 'focus_bounds' );
 
 		return self::$bounds;
 	}
