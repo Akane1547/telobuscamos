@@ -1,5 +1,12 @@
 # Cambios
 
+## e2f1afe - Fix: el resumen y el paso 2 muestran $0 cuando la ubicación no es válida, y el contorno de dibujo pesa 8 veces menos
+
+- **src/Data/chile-boundary.json**: añade `outline`, el contorno de dibujo de Natural Earth 1:50m (31 anillos, 2.006 puntos), junto a `rings`, el de validación de 1:10m (163 anillos, 17.197 puntos). Las `focus_bounds` del mapa salen del contorno de dibujo.
+- **src/Core/Coverage.php**: `outline()` (dibujo) y `rings()` (validación), ambos sobre un único `data()` que decodifica el archivo una sola vez por petición; `section()` concentra la lectura y el chequeo de cada sección. Documenta que la validación siempre usa `rings()`.
+- **src/Core/Ajax.php**: `get_coverage_area` envía `outline` en lugar de `rings`, así que la respuesta pasa de 333 KB a 38,9 KB (medido en el navegador: 190 ms en caliente). El contorno de validación ya no viaja al navegador.
+- **assets/js/map.js**: cada anillo se dibuja envuelto en su propio polígono, porque `L.polygon()` interpreta los anillos siguientes como agujeros del primero y Chile es un multipolígono (continente, Tierra del Fuego, archipiélagos). Además, cuando el servidor rechaza la ubicación, el paso 2 y el resumen quedan en `$0` con el motivo a la vista, en lugar de mantener el monto de la ubicación anterior; al volver a un punto válido el precio se restablece y el error desaparece.
+
 ## b419843 - Feat: el área de cobertura es el contorno real de Chile
 
 - **src/Data/chile-boundary.json** (nuevo): contorno de Chile de Natural Earth 1:10m (dominio público), 163 anillos y 17.197 puntos, sin simplificar, en pares `[lat, lng]` como los usa Leaflet, más las bounds para encuadrar la vista.
