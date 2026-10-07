@@ -1,5 +1,14 @@
 # Cambios
 
+## b419843 - Feat: el área de cobertura es el contorno real de Chile
+
+- **src/Data/chile-boundary.json** (nuevo): contorno de Chile de Natural Earth 1:10m (dominio público), 163 anillos y 17.197 puntos, sin simplificar, en pares `[lat, lng]` como los usa Leaflet, más las bounds para encuadrar la vista.
+- **src/Core/Coverage.php** (nuevo): `contains()` resuelve la cobertura con *point-in-polygon* (ray casting) sobre todos los anillos y, si el punto cae fuera, acepta cualquier ubicación a menos de `TOLERANCE_KM` (2 km) del borde dibujado: el contorno viene generalizado y con 1:10m Punta Arenas queda a 0,66 km del borde del dato. `rings()` y `bounds()` alimentan el mapa. Una consulta cuesta ~0,9 ms.
+- **src/Core/Ajax.php**: `get_coverage_area` devuelve `type: polygon` con los anillos y las bounds; `save_step2` y `calculate_price` validan con `Coverage::contains()`; desaparecen el círculo fijo de 50 km, `distance_km()` y `is_within_coverage()`. El endpoint fija `serialize_precision` en -1 porque php-fpm lo trae en 17 y cada coordenada se imprimía con 17 dígitos: 680 KB de respuesta que ahora son 333 KB.
+- **assets/js/map.js**: dibuja el polígono que decide el servidor, encuadra la vista con sus bounds y ya no pide el área en cada movimiento del pin (el área es el país, no sigue al marcador).
+- **src/Core/Assets.php** y **assets/js/config.js**: la vista inicial y el pin de partida quedan en coordenadas de país con zoom 4; el encuadre definitivo lo impone el contorno.
+- **src/Data/index.php** (nuevo): guardia "Silence is golden" del directorio.
+
 ## 463cf3f - Fix: el recibo muestra el estado y la fecha reales, y el resumen se actualiza en vivo
 
 - **src/Payments/OrderStatus.php**: nuevo `label()`, la etiqueta traducida de cada estado, para que el front no tenga que decidir textos.
