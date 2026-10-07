@@ -1,5 +1,11 @@
 # Cambios
 
+## 4379571 - Fix: el botón Siguiente dejaba de responder tras retroceder, y el paso a mostrar deja de saltarse pasos
+
+- **assets/js/ui.js**: `setLoading( wrapper, false )` limpia ahora **todos** los botones de navegación, no solo el activo. `goNext` cambia de paso (`renderCurrentStep`) antes del `finally`, así que al limpiar el botón que se había deshabilitado ya no era el activo —o no había ninguno visible, como en la confirmación—: quedaba `disabled` y con `is-loading` para siempre. Efecto visible: al retroceder desde el paso 3 (o el 1) el "Siguiente" no respondía a ningún clic y no se podía volver a avanzar.
+- **assets/js/stepper.js**: el paso a mostrar es el siguiente al que se acaba de guardar, no el `current_step` que devuelve el servidor. Ese campo es el punto de reanudación de la sesión y no baja nunca (`max( 2, current_step )` / `max( 3, current_step )`), así que al retroceder y volver a avanzar el cliente saltaba al paso más lejano ya alcanzado y se saltaba los intermedios.
+- **assets/js/map.js**: el `catch` de `requestPrice()` comprueba el token de petición igual que la rama de éxito, para que una respuesta fallida lenta no pise el estado de una más nueva (dejaba el precio en `$0` y el error con el pin en un punto válido).
+
 ## e2f1afe - Fix: el resumen y el paso 2 muestran $0 cuando la ubicación no es válida, y el contorno de dibujo pesa 8 veces menos
 
 - **src/Data/chile-boundary.json**: añade `outline`, el contorno de dibujo de Natural Earth 1:50m (31 anillos, 2.006 puntos), junto a `rings`, el de validación de 1:10m (163 anillos, 17.197 puntos). Las `focus_bounds` del mapa salen del contorno de dibujo.
