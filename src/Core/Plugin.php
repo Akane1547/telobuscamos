@@ -7,6 +7,7 @@
 
 namespace SimpleForm\Core;
 use SimpleForm\Admin\AdminServices;
+use SimpleForm\Database\Database;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -52,5 +53,8 @@ class Plugin {
         if ( is_admin() ) {
             new AdminServices();
         }
+
+        // Esquema propio: comprueba la versión guardada y migra si hace falta.
+        Database::maybe_upgrade();
     }
 }

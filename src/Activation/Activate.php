@@ -7,6 +7,8 @@
 
 namespace SimpleForm\Activation;
 
+use SimpleForm\Database\Database;
+
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
@@ -48,9 +50,12 @@ final class Activate {
  
 
     /**
-     * Placeholder para creación de tablas propias vía dbDelta().
+     * Crea el esquema propio vía dbDelta().
+     *
+     * Delega en Database para que la activación y la migración en caliente
+     * usen exactamente la misma definición de tablas.
      */
     private static function create_tables(): void {
-        // Reservado para futuras migraciones de base de datos.
+        Database::create_tables();
     }
 }
