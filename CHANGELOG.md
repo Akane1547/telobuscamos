@@ -1,5 +1,10 @@
 # Cambios
 
+## 5e48677 - Fase 1: máquina de estados del pedido (OrderStatus)
+
+- **src/Payments/OrderStatus.php**: los 9 estados internos del pedido y un único mapa de transiciones del que salen `all()`, `is_valid()`, `is_final()` y `can_transition()`; `approved` no vuelve a `pending` y `draft` no puede saltar a `approved`, así que `save_step3` no tiene forma de marcar un pedido como pagado.
+- **src/Payments/index.php**: guardia "Silence is golden" del directorio nuevo, igual que en `Core/` y `Activation/`.
+
 ## ef0bb86 - Inicial: plugin simple-form (raíz = plugin)
 
 - **simple-form.php**: cabecera y versión única, constantes (PATH/URL/BASENAME), autoload PSR-4 propio y hooks de activación/desactivación; arranque en `plugins_loaded`.
