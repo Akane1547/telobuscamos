@@ -106,19 +106,32 @@
 		/**
 		 * Estado de "cargando" en el botón activo (next o submit).
 		 *
+		 * Al terminar se limpian TODOS los botones de navegación, no solo el
+		 * activo: mientras la petición está en vuelo el paso ya cambió
+		 * (renderCurrentStep corre antes de este finally), así que el botón que
+		 * se deshabilitó dejó de ser el activo y quedaría deshabilitado para
+		 * siempre — al retroceder, "Siguiente" no respondería.
+		 *
 		 * @param {HTMLElement} wrapper
 		 * @param {boolean} isLoading
 		 */
 		setLoading( wrapper, isLoading ) {
-			const activeBtn = wrapper.querySelector( `${ selectors.navNext }:not([hidden])` )
-				|| wrapper.querySelector( `${ selectors.navSubmit }:not([hidden])` );
+			if ( isLoading ) {
+				const activeBtn = wrapper.querySelector( `${ selectors.navNext }:not([hidden])` )
+					|| wrapper.querySelector( `${ selectors.navSubmit }:not([hidden])` );
 
-			if ( ! activeBtn ) {
+				if ( activeBtn ) {
+					activeBtn.disabled = true;
+					activeBtn.classList.add( 'is-loading' );
+				}
+
 				return;
 			}
 
-			activeBtn.disabled = isLoading;
-			activeBtn.classList.toggle( 'is-loading', isLoading );
+			wrapper.querySelectorAll( `${ selectors.navPrev }, ${ selectors.navNext }, ${ selectors.navSubmit }` ).forEach( ( btn ) => {
+				btn.disabled = false;
+				btn.classList.remove( 'is-loading' );
+			} );
 		},
 
 		/**

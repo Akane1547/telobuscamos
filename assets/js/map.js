@@ -144,6 +144,10 @@
 				} )
 			);
 		} catch ( error ) {
+			if ( myToken !== priceRequestToken ) {
+				return; // llegó una respuesta vieja después de una más nueva; se ignora.
+			}
+
 			// eslint-disable-next-line no-console
 			console.error( '[simple-form] Error calculando precio:', error.message, error.errors || '' );
 

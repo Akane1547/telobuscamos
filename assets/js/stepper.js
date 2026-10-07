@@ -105,7 +105,13 @@
 			}
 
 			SF.state.progress = result.progress;
-			SF.state.currentStep = result.progress.current_step;
+
+			// El paso a mostrar es el siguiente al que se acaba de guardar, no el
+			// current_step que devuelve el servidor: ese es el punto de reanudación
+			// y no baja nunca, así que al retroceder y volver a avanzar saltaría al
+			// paso más lejano ya alcanzado y se saltaría los intermedios.
+			const totalSteps = wrapper.querySelectorAll( SF.selectors.stepPanel ).length;
+			SF.state.currentStep = Math.min( totalSteps, currentStep + 1 );
 
 			if ( currentStep === 2 ) {
 				UI.updateSummary( wrapper, result.progress.step2 );
