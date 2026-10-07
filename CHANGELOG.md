@@ -1,5 +1,11 @@
 # Cambios
 
+## 51876b0 - Fase 2: pasos validados contra la base de datos
+
+- **src/Core/Session.php**: el transient deja de guardar datos del cliente y pasa a ser un puntero hacia el `draft_id` del pedido (2 horas renovables por actividad); desaparecen `save_step()`, `get()` y `previous_steps_valid()`. Se conserva `user_id` para la comprobación de propiedad entre usuarios autenticados.
+- **src/Database/OrderRepository.php** (nuevo): `create_draft()`, `find_by_draft_id()`, `update()`, `is_step_complete()` —la validación de pasos anteriores leída de la fila, en lugar de los `stepN_valid` del transient— y `to_progress()`, que arma los shapes `step1`/`step2`/`step3` que ya consumen `stepper.js`, `ui.js` y `receipt.js`.
+- **src/Core/Ajax.php**: `save_step1/2/3` y `get_progress` escriben y leen `sf_orders`; el monto se recalcula siempre con el snapshot guardado y se persiste en CLP entero (`compute_price()` deja de devolver `float`); `save_step3` deja el pedido en `pending` pasando por `OrderStatus::can_transition()`, así que `approved` no puede volver a `pending` (409); los mensajes de error que faltaban quedan internacionalizados.
+
 ## 7d0189a - Fase 1: uninstall.php (paso 4)
 
 - **uninstall.php**: al desinstalar borra `wp_sf_orders` y `wp_sf_payment_events`, las opciones `simple_form_services` y `simple_form_db_version`, y los transients de sesión `_transient(_timeout)_sf_client_session_*`; guardia `WP_UNINSTALL_PLUGIN` e inclusión manual de `Database` porque en ese contexto no existe el autoloader del plugin (así los nombres de tabla no se duplican).
