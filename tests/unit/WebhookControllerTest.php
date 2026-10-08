@@ -34,8 +34,20 @@ final class WebhookControllerTest extends TestCase {
 	 * @param string $secreto Clave con la que firmar.
 	 * @return string Valor del header x-signature.
 	 */
-	private function firma( string $id, string $ts, string $secreto = self::SECRETO ): string {
-		$mensaje = sprintf( 'id:%s;request-id:%s;ts:%s;', strtolower( $id ), 'req-123', $ts );
+	private function firma( string $id, string $ts, string $secreto = self::SECRETO, string $req = 'req-123' ): string {
+		$partes = array();
+
+		if ( '' !== $id ) {
+			$partes[] = 'id:' . strtolower( $id );
+		}
+
+		if ( '' !== $req ) {
+			$partes[] = 'request-id:' . $req;
+		}
+
+		$partes[] = 'ts:' . $ts;
+
+		$mensaje = implode( ';', $partes ) . ';';
 
 		return sprintf( 'ts=%s,v1=%s', $ts, hash_hmac( 'sha256', $mensaje, $secreto ) );
 	}

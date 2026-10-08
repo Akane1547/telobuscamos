@@ -63,10 +63,27 @@ final class WebhookController {
 	 * @return \WP_REST_Response
 	 */
 	public function handle( $request ) {
-		$data       = $request->get_param( 'data' );
-		$payment_id = is_array( $data ) && isset( $data['id'] )
-			? (string) $data['id']
-			: (string) $request->get_param( 'id' );
+		$query = (array) $request->get_query_params();
+		$data  = $request->get_param( 'data' );
+
+		// El valor que se firma es el `data.id` de la query, tal cual lo leen los
+		// SDK oficiales. Se guarda aparte del id que se usa para consultar el
+		// pago, porque la notificación del estilo `?id=...&topic=payment` no trae
+		// `data.id`, y en ese caso el par `id:` no va en el manifiesto.
+		$data_id = isset( $query['data.id'] ) ? (string) $query['data.id'] : '';
+
+		// El id del pago sí puede venir por cualquiera de las dos formas.
+		$payment_id = $data_id;
+
+		if ( '' === $payment_id ) {
+			if ( isset( $query['id'] ) ) {
+				$payment_id = (string) $query['id'];
+			} elseif ( is_array( $data ) && isset( $data['id'] ) ) {
+				$payment_id = (string) $data['id'];
+			} else {
+				$payment_id = (string) $request->get_param( 'id' );
+			}
+		}
 
 		$tipo = (string) ( $request->get_param( 'type' ) ?: $request->get_param( 'topic' ) );
 
@@ -87,7 +104,7 @@ final class WebhookController {
 
 		$secreto = (string) PaymentConfig::credential( 'mercado_pago', 'webhook_secret' );
 
-		if ( ! self::signature_matches( $_SERVER, $payment_id, $secreto ) ) {
+		if ( ! self::signature_matches( $_SERVER, $data_id, $secreto ) ) {
 			return new \WP_REST_Response( array( 'ok' => false, 'motivo' => 'firma inválida' ), 401 );
 		}
 
@@ -165,14 +182,14 @@ final class WebhookController {
 	 * @return bool
 	 */
 	public static function signature_matches( array $server, string $data_id, string $secret ): bool {
-		if ( '' === $secret || '' === $data_id ) {
+		if ( '' === $secret ) {
 			return false;
 		}
 
 		$header     = (string) ( $server['HTTP_X_SIGNATURE'] ?? '' );
 		$request_id = (string) ( $server['HTTP_X_REQUEST_ID'] ?? '' );
 
-		if ( '' === $header || '' === $request_id ) {
+		if ( '' === $header ) {
 			return false;
 		}
 
@@ -193,8 +210,24 @@ final class WebhookController {
 			return false;
 		}
 
-		// El id va en minúsculas: así lo pide la documentación en el mensaje firmado.
-		$mensaje  = sprintf( 'id:%s;request-id:%s;ts:%s;', strtolower( $data_id ), $request_id, $ts );
+		// El manifiesto lleva solo los pares que vinieron en la notificación: si
+		// un valor no está, ese par se omite. Lo documenta Mercado Pago y pasa de
+		// verdad: las notificaciones del estilo `?id=...&topic=payment` no traen
+		// `data.id` en la query, así que el par `id:` no va. El id va en
+		// minúsculas, como piden los SDK oficiales.
+		$partes = array();
+
+		if ( '' !== $data_id ) {
+			$partes[] = 'id:' . strtolower( $data_id );
+		}
+
+		if ( '' !== $request_id ) {
+			$partes[] = 'request-id:' . $request_id;
+		}
+
+		$partes[] = 'ts:' . $ts;
+
+		$mensaje  = implode( ';', $partes ) . ';';
 		$esperado = hash_hmac( 'sha256', $mensaje, $secret );
 
 		// hash_equals compara en tiempo constante.
