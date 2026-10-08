@@ -58,6 +58,10 @@ class Shortcode {
 		// Obtener servicios guardados desde el admin
 		$services = get_option( \SimpleForm\Admin\AdminServices::OPTION_KEY, array() );
 
+		// Medios de pago activos: salen del registro, no de un literal. Sin
+		// ninguno activo el Paso 3 no ofrece nada y el aviso lo explica.
+		$payment_methods = \SimpleForm\Payments\PaymentConfig::enabled_ids();
+
 		ob_start();
 		?>
 		<div class="pn-form-wrapper">
@@ -168,10 +172,16 @@ class Shortcode {
 						<div class="pn-form__row">
 							<label class="pn-form__label"><?php esc_html_e( 'Selecciona un medio de pago', 'simple-form' ); ?></label>
 							<div class="pn-form__radio-group">
-								<label class="pn-form__radio">
-									<input type="radio" name="payment_method" value="mercado_pago" required />
-									Mercado Pago
-								</label>
+								<?php if ( empty( $payment_methods ) ) : ?>
+									<p class="pn-form__notice"><?php esc_html_e( 'No hay medios de pago disponibles.', 'simple-form' ); ?></p>
+								<?php else : ?>
+									<?php foreach ( $payment_methods as $method_id ) : ?>
+										<label class="pn-form__radio">
+											<input type="radio" name="payment_method" value="<?php echo esc_attr( $method_id ); ?>" required />
+											<?php echo esc_html( \SimpleForm\Payments\Gateways::label( $method_id ) ); ?>
+										</label>
+									<?php endforeach; ?>
+								<?php endif; ?>
 							</div>
 							<span class="pn-form__error" data-error-for="payment_method"></span>
 						</div>

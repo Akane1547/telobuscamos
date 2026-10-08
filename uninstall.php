@@ -34,8 +34,9 @@ foreach ( $tables as $table ) {
 delete_option( 'simple_form_services' );
 delete_option( 'simple_form_db_version' );
 
-// Los medios de pago y las credenciales de Fase 3 se agregan a esta lista
-// cuando existan: no se borran nombres que el plugin todavía no escribe.
+// Medios de pago y credenciales de la Fase 3 (cifradas).
+delete_option( 'simple_form_payment_methods' );
+delete_option( 'simple_form_payment_credentials' );
 
 // Punteros de sesión de invitados, con su timeout.
 $session_like = $wpdb->esc_like( '_transient_sf_client_session_' ) . '%';

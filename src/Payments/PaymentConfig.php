@@ -166,11 +166,14 @@ final class PaymentConfig {
 
 			$cipher = Crypto::encrypt( (string) $plain_fields[ $field ] );
 
-			// Sin cifrado posible (sin sodium o sin salts) no se guarda nada: un
-			// valor en claro en la base es peor que no tenerlo.
-			if ( '' !== $cipher ) {
-				$set[ $field ] = $cipher;
+			// Había algo que cifrar y no se pudo (sin sodium o sin salts): no se
+			// guarda nada, ni el modo, antes que dejar un valor en claro o dar por
+			// guardado algo que no lo está.
+			if ( '' === $cipher ) {
+				return false;
 			}
+
+			$set[ $field ] = $cipher;
 		}
 
 		$all[ $gateway_id ] = $set;

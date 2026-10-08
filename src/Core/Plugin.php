@@ -6,6 +6,7 @@
  */
 
 namespace SimpleForm\Core;
+use SimpleForm\Admin\AdminPayments;
 use SimpleForm\Admin\AdminServices;
 use SimpleForm\Database\Database;
 
@@ -52,6 +53,7 @@ class Plugin {
         // Solo instanciar la pantalla de administración si estamos en wp-admin
         if ( is_admin() ) {
             new AdminServices();
+            new AdminPayments();
         }
 
         // Esquema propio: comprueba la versión guardada y migra si hace falta.

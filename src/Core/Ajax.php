@@ -9,6 +9,7 @@ namespace SimpleForm\Core;
 
 use SimpleForm\Database\OrderRepository;
 use SimpleForm\Payments\OrderStatus;
+use SimpleForm\Payments\PaymentConfig;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -402,6 +403,12 @@ class Ajax {
 
 		if ( '' === $payment_method ) {
 			wp_send_json_error( array( 'message' => __( 'Selecciona un medio de pago.', 'simple-form' ) ), 422 );
+		}
+
+		// El medio tiene que estar activo en el admin: un ID que no esté en la
+		// lista (o que no exista en el registro) no se acepta desde el servidor.
+		if ( ! in_array( $payment_method, PaymentConfig::enabled_ids(), true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Ese medio de pago no está disponible.', 'simple-form' ) ), 422 );
 		}
 
 		// El monto se recalcula con el snapshot guardado, nunca con lo que envíe el cliente.
