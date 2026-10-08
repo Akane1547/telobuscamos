@@ -9,6 +9,7 @@ namespace SimpleForm\Core;
 use SimpleForm\Admin\AdminPayments;
 use SimpleForm\Admin\AdminServices;
 use SimpleForm\Database\Database;
+use SimpleForm\Rest\WebhookController;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -55,6 +56,15 @@ class Plugin {
             new AdminServices();
             new AdminPayments();
         }
+
+        // Ruta que reciben las notificaciones de Mercado Pago. Va en rest_api_init
+        // porque antes de ese hook registrar rutas avisa que se hizo mal.
+        add_action(
+            'rest_api_init',
+            function () {
+                ( new WebhookController() )->register();
+            }
+        );
 
         // Esquema propio: comprueba la versión guardada y migra si hace falta.
         Database::maybe_upgrade();

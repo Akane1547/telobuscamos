@@ -80,6 +80,31 @@ final class OrderRepository {
 	}
 
 	/**
+	 * Busca un pedido por su id.
+	 *
+	 * Lo usa el webhook: la notificación trae el id del pago, y el pedido se
+	 * localiza por el external_reference que devuelve la pasarela.
+	 *
+	 * @param int $order_id
+	 * @return array|null Fila asociativa, o null.
+	 */
+	public static function find( int $order_id ): ?array {
+		global $wpdb;
+
+		if ( $order_id <= 0 ) {
+			return null;
+		}
+
+		$table = Database::table_name( Database::TABLE_ORDERS );
+		$row   = $wpdb->get_row(
+			$wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d LIMIT 1", $order_id ),
+			ARRAY_A
+		);
+
+		return is_array( $row ) ? $row : null;
+	}
+
+	/**
 	 * Actualiza columnas de un pedido y refresca updated_at.
 	 *
 	 * @param int   $order_id

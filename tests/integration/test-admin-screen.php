@@ -145,7 +145,15 @@ $post = array(
 list( $tipo, $valor ) = ejecutar( array( $admin, 'handle_save_credentials' ), $post );
 check( 'redirige', $tipo, 'redirect' );
 check( 'con updated=credentials', false !== strpos( $valor, 'updated=credentials' ), true );
-check( 'el secreto del webhook se lee de vuelta', $PaymentConfig::credential( 'mercado_pago', 'webhook_secret' ), 'secreto-web-2' );
+// El secreto se guarda, pero desde que existe la constante en wp-config.php es
+// la constante la que manda. Se comprueba que quedó guardado (cifrado, sin el
+// texto claro) y de dónde lo sirve PaymentConfig, sin comparar valores.
+$crudo           = get_option( 'simple_form_payment_credentials' );
+$secreto_cifrado = (string) ( $crudo['mercado_pago']['webhook_secret'] ?? '' );
+
+check( 'el secreto se guardó cifrado', strlen( $secreto_cifrado ) > 40, true );
+check( 'y no en texto claro', false !== strpos( (string) json_encode( $crudo ), 'secreto-web-2' ), false );
+check( 'la fuente del secreto es la constante', $PaymentConfig::source( 'mercado_pago', 'webhook_secret' ), 'constant' );
 
 // El Access Token no se compara nunca contra su valor: con una constante en
 // wp-config.php la fuente es la constante, y el valor no se imprime. Se
@@ -176,7 +184,11 @@ $post = array(
 );
 list( $tipo, $valor ) = ejecutar( array( $admin, 'handle_save_credentials' ), $post );
 check( 'redirige sin romper', $tipo, 'redirect' );
-check( 'el secreto del webhook sigue ahí', $PaymentConfig::credential( 'mercado_pago', 'webhook_secret' ), 'secreto-web-2' );
+check(
+	'el secreto guardado no se tocó',
+	(string) ( get_option( 'simple_form_payment_credentials' )['mercado_pago']['webhook_secret'] ?? '' ) === $secreto_cifrado,
+	true
+);
 
 echo "\n=== la pantalla: lo que se pinta ===\n";
 update_option( 'simple_form_payment_methods', array( 'mercado_pago' ) );
@@ -190,7 +202,14 @@ check( 'titula la pantalla', false !== strpos( $html, 'Medios de pago' ), true )
 check( 'el checkbox de Mercado Pago sale marcado', (bool) preg_match( '/name="methods\[\]" value="mercado_pago"\s+checked/', $html ), true );
 check( 'no avisa de falta de medios activos', false === strpos( $html, 'No hay ningún medio activo' ), true );
 check( 'avisa de que está en modo de pruebas', false !== strpos( $html, 'Modo de pruebas' ), true );
-check( 'el campo guardado sale vacío', (bool) preg_match( '/name="credentials\[mercado_pago\]\[webhook_secret\]" value=""/', $html ), true );
+$secreto_cargado = (string) $PaymentConfig::credential( 'mercado_pago', 'webhook_secret' );
+
+check( 'el secreto del webhook sale bloqueado por la constante', false !== strpos( $html, 'SIMPLE_FORM_MERCADO_PAGO_WEBHOOK_SECRET' ), true );
+check(
+	'y la pantalla no imprime su valor',
+	'' === $secreto_cargado || false === strpos( $html, $secreto_cargado ),
+	true
+);
 check( 'el Access Token sale bloqueado', false !== strpos( $html, 'definida en wp-config.php' ), true );
 check( 'y dice de qué constante sale', false !== strpos( $html, 'SIMPLE_FORM_MERCADO_PAGO_ACCESS_TOKEN' ), true );
 check( 'el modo también sale bloqueado por la constante', false !== strpos( $html, 'Lo fija SIMPLE_FORM_MERCADO_PAGO_MODE' ), true );
