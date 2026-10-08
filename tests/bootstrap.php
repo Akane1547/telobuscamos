@@ -18,6 +18,9 @@
 define( 'ABSPATH', __DIR__ . '/support/fake-wp/' );
 define( 'SIMPLE_FORM_PATH', dirname( __DIR__ ) . '/' );
 
+// Constante de WordPress que usan los repositorios en $wpdb->get_row/get_results.
+define( 'ARRAY_A', 'ARRAY_A' );
+
 // Una constante como las de wp-config.php, con valor de mentira, para poder
 // probar que manda sobre lo que se guarda cifrado en la base. Los campos cuya
 // ruta almacenada se prueba (webhook_secret) no tienen constante a propósito.
