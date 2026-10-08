@@ -8,6 +8,8 @@
 namespace SimpleForm\Core;
 
 use SimpleForm\Database\OrderRepository;
+use SimpleForm\Payments\Gateway;
+use SimpleForm\Payments\Gateways;
 use SimpleForm\Payments\OrderStatus;
 use SimpleForm\Payments\PaymentConfig;
 
@@ -446,11 +448,27 @@ class Ajax {
 			wp_send_json_error( array( 'message' => __( 'No se pudo guardar el pedido.', 'simple-form' ) ), 500 );
 		}
 
+		// El pago lo crea la pasarela y solo ella puede decir a dónde va el
+		// comprador. Nada de esto marca el pedido como pagado: eso llega por el
+		// webhook y por la consulta del pago.
+		$gateway_class = Gateways::gateway_class( $payment_method );
+		$redirect_url  = '';
+
+		if ( '' !== $gateway_class && class_exists( $gateway_class ) ) {
+			$gateway      = new $gateway_class();
+			$redirect_url = $gateway instanceof Gateway ? $gateway->create_payment( $order ) : '';
+		}
+
+		if ( '' === $redirect_url ) {
+			wp_send_json_error( array( 'message' => __( 'No se pudo iniciar el pago. Intenta nuevamente.', 'simple-form' ) ), 502 );
+		}
+
 		wp_send_json_success(
 			array(
-				'message'    => __( 'Formulario completado exitosamente.', 'simple-form' ),
-				'session_id' => $session_id,
-				'progress'   => OrderRepository::to_progress( $order ),
+				'message'      => __( 'Formulario completado exitosamente.', 'simple-form' ),
+				'session_id'   => $session_id,
+				'progress'     => OrderRepository::to_progress( $order ),
+				'redirect_url' => $redirect_url,
 			)
 		);
 	}

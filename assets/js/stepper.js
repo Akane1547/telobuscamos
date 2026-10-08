@@ -106,6 +106,15 @@
 
 			SF.state.progress = result.progress;
 
+			// El pago se completa en la pasarela: si el servidor devolvió a dónde
+			// mandar al comprador, se va ahora y no se avanza de paso. La sesión
+			// ya quedó guardada arriba, así que al volver el formulario se
+			// reanuda en el paso que corresponda.
+			if ( result.redirect_url ) {
+				window.location.assign( result.redirect_url );
+				return;
+			}
+
 			// El paso a mostrar es el siguiente al que se acaba de guardar, no el
 			// current_step que devuelve el servidor: ese es el punto de reanudación
 			// y no baja nunca, así que al retroceder y volver a avanzar saltaría al
