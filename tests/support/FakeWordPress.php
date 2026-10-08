@@ -105,4 +105,11 @@ final class FakeWordPress {
 
 		return $url . $separator . rawurlencode( $key ) . '=' . rawurlencode( $value );
 	}
+
+	/**
+	 * Fecha UTC fija, para que las pruebas no dependan del reloj.
+	 */
+	public static function current_time( string $type = 'mysql' ): string {
+		return '2026-10-08 12:00:00';
+	}
 }

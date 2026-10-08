@@ -75,3 +75,11 @@ function wp_validate_redirect( $location, $fallback_url = '' ) {
 function add_query_arg( $key, $value, $url = '' ) {
 	return \SimpleForm\Tests\FakeWordPress::add_query_arg( (string) $key, (string) $value, (string) $url );
 }
+
+function current_time( $type = 'mysql', $gmt = 0 ) {
+	return \SimpleForm\Tests\FakeWordPress::current_time( (string) $type );
+}
+
+function wp_json_encode( $data, $options = 0, $depth = 512 ) {
+	return json_encode( $data, $options, $depth );
+}
