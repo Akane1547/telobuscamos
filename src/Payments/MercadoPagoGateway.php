@@ -144,10 +144,13 @@ final class MercadoPagoGateway implements Gateway {
 					'unit_price'  => (int) $order['amount'],
 				),
 			),
-			'payer'              => array(
-				'name'  => (string) $order['full_name'],
-				'email' => (string) $order['email'],
-			),
+			// Sin `payer` a propósito. En ambiente de prueba Mercado Pago rechaza
+			// un correo de pagador que no sea de un usuario de prueba
+			// (`Payer email forbidden`), y el correo del formulario es el de una
+			// persona real: la preferencia se creaba igual, pero el comprador no
+			// podía completar el pago. En un checkout alojado el pagador lo
+			// resuelve Mercado Pago con la sesión de quien paga, así que tampoco
+			// hace falta mandarle datos personales de más.
 			'back_urls'          => array(
 				'success' => $this->return_url( 'success' ),
 				'pending' => $this->return_url( 'pending' ),

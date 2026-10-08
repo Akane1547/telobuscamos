@@ -123,11 +123,15 @@ final class MercadoPagoGatewayTest extends TestCase {
 		$this->assertSame( array( 'draft_id' => 'abc123' ), $this->gateway()->build_preference( self::ORDEN )['metadata'] );
 	}
 
-	public function test_el_payer_sale_del_pedido(): void {
-		$payer = $this->gateway()->build_preference( self::ORDEN )['payer'];
-
-		$this->assertSame( 'María González', $payer['name'] );
-		$this->assertSame( 'maria@ejemplo.cl', $payer['email'] );
+	/**
+	 * La preferencia no manda `payer` a propósito: en ambiente de prueba Mercado
+	 * Pago rechaza un correo de pagador que no sea de un usuario de prueba, y el
+	 * del formulario es el de una persona real, así que el comprador no podía
+	 * completar el pago. El pagador lo resuelve Mercado Pago con la sesión de
+	 * quien paga.
+	 */
+	public function test_la_preferencia_no_manda_payer(): void {
+		$this->assertArrayNotHasKey( 'payer', $this->gateway()->build_preference( self::ORDEN ) );
 	}
 
 	public function test_las_tres_back_urls_apuntan_al_sitio_con_su_caso(): void {
