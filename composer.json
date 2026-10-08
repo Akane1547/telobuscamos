@@ -16,6 +16,6 @@
 	},
 	"scripts": {
 		"test": "@test:unit",
-		"test:unit": "phpunit --testsuite unit"
+		"test:unit": "@php vendor/bin/phpunit --testsuite unit"
 	}
 }
