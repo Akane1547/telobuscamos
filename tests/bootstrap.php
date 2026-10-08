@@ -12,7 +12,10 @@
  * @package SimpleForm\Tests
  */
 
-define( 'ABSPATH', dirname( __DIR__ ) . '/' );
+// ABSPATH apunta a los dobles de WordPress, no a la raíz del plugin: es lo que
+// Database::create_tables() usa para hacer require_once del upgrade.php de
+// wp-admin, y su doble vive en tests/support/fake-wp/.
+define( 'ABSPATH', __DIR__ . '/support/fake-wp/' );
 define( 'SIMPLE_FORM_PATH', dirname( __DIR__ ) . '/' );
 
 // Una constante como las de wp-config.php, con valor de mentira, para poder

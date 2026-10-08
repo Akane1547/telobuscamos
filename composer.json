@@ -16,6 +16,11 @@
 	},
 	"scripts": {
 		"test": "@test:unit",
-		"test:unit": "@php vendor/bin/phpunit --testsuite unit"
+		"test:unit": "@php vendor/bin/phpunit --testsuite unit",
+		"test:integration": "tests/integration/run.sh",
+		"test:all": [
+			"@test:unit",
+			"@test:integration"
+		]
 	}
 }
