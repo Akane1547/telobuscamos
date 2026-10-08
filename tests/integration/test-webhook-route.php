@@ -83,6 +83,47 @@ $respuesta = wp_remote_post(
 
 check( 'firma que no es de Mercado Pago -> 401', (int) wp_remote_retrieve_response_code( $respuesta ), 401 );
 
+// --- 2b. firma válida: la verificación tiene que pasar -----------------------
+
+echo "\n=== 2b. firma valida, calculada con el secreto del sitio ===\n";
+
+$secreto = (string) \SimpleForm\Payments\PaymentConfig::credential( 'mercado_pago', 'webhook_secret' );
+
+if ( '' === $secreto ) {
+	echo "  (sin secreto configurado: no se puede probar la firma)\n";
+} else {
+	// El manifiesto se arma con el data.id de la query, el x-request-id y el ts.
+	// Esta prueba cubre de paso que `data.id` llegue con su nombre y no como
+	// `data_id` (PHP cambia los puntos en $_GET).
+	$ts      = (string) ( time() * 1000 );
+	$rid     = 'req-integracion-' . wp_generate_uuid4();
+	$mensaje = sprintf( 'id:%s;request-id:%s;ts:%s;', '123456', $rid, $ts );
+
+	$respuesta = wp_remote_post(
+		$url . '?data.id=123456&type=payment',
+		array(
+			'timeout' => 30,
+			'headers' => array(
+				'x-signature'  => 'ts=' . $ts . ',v1=' . hash_hmac( 'sha256', $mensaje, $secreto ),
+				'x-request-id' => $rid,
+				'Content-Type' => 'application/json',
+			),
+			'body'    => wp_json_encode(
+				array(
+					'type' => 'payment',
+					'data' => array( 'id' => '123456' ),
+				)
+			),
+		)
+	);
+
+	$codigo = (int) wp_remote_retrieve_response_code( $respuesta );
+
+	// Con una firma válida el handler sigue: consulta el pago en la API, y con un
+	// id inventado eso da 500. Lo que se comprueba es que NO sea 401.
+	check( 'una firma valida no se rechaza con 401', 401 === $codigo ? '401' : 'paso', 'paso' );
+}
+
 // --- 3. header malformado ----------------------------------------------------
 
 echo "\n=== 3. header malformado ===\n";

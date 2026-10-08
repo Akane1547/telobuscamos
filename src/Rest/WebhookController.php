@@ -57,32 +57,60 @@ final class WebhookController {
 	}
 
 	/**
+	 * Lee un parámetro del query string tal como llegó en la URL.
+	 *
+	 * PHP convierte los puntos en guiones bajos en $_GET, así que `data.id` no
+	 * sobrevive a los parámetros ya procesados de WordPress: hay que leerlo del
+	 * query string crudo, que es el nombre con el que Mercado Pago lo firma.
+	 *
+	 * @param string $name Nombre tal cual aparece en la URL.
+	 * @return string Valor, o '' si no está.
+	 */
+	private static function query_param( string $name ): string {
+		$raw = (string) ( $_SERVER['QUERY_STRING'] ?? '' );
+
+		foreach ( explode( '&', $raw ) as $par ) {
+			$trozos = explode( '=', $par, 2 );
+
+			if ( 2 === count( $trozos ) && urldecode( $trozos[0] ) === $name ) {
+				return urldecode( $trozos[1] );
+			}
+		}
+
+		return '';
+	}
+
+	/**
 	 * Procesa la notificación.
 	 *
 	 * @param \WP_REST_Request $request
 	 * @return \WP_REST_Response
 	 */
 	public function handle( $request ) {
-		$query = (array) $request->get_query_params();
-		$data  = $request->get_param( 'data' );
+		$data = $request->get_param( 'data' );
 
 		// El valor que se firma es el `data.id` de la query, tal cual lo leen los
-		// SDK oficiales. Se guarda aparte del id que se usa para consultar el
-		// pago, porque la notificación del estilo `?id=...&topic=payment` no trae
-		// `data.id`, y en ese caso el par `id:` no va en el manifiesto.
-		$data_id = isset( $query['data.id'] ) ? (string) $query['data.id'] : '';
+		// SDK oficiales. Se lee del query string sin procesar porque PHP convierte
+		// los puntos en guiones bajos en $_GET: `data.id` llega como `data_id`, y
+		// los parámetros ya procesados de WordPress no lo tienen con el nombre que
+		// firma Mercado Pago.
+		$data_id = self::query_param( 'data.id' );
 
-		// El id del pago sí puede venir por cualquiera de las dos formas.
+		// Se guarda aparte del id que se usa para consultar el pago, porque la
+		// notificación del estilo `?id=...&topic=payment` no trae `data.id`, y en
+		// ese caso el par `id:` no va en el manifiesto.
 		$payment_id = $data_id;
 
 		if ( '' === $payment_id ) {
-			if ( isset( $query['id'] ) ) {
-				$payment_id = (string) $query['id'];
-			} elseif ( is_array( $data ) && isset( $data['id'] ) ) {
-				$payment_id = (string) $data['id'];
-			} else {
-				$payment_id = (string) $request->get_param( 'id' );
-			}
+			$payment_id = self::query_param( 'id' );
+		}
+
+		if ( '' === $payment_id && is_array( $data ) && isset( $data['id'] ) ) {
+			$payment_id = (string) $data['id'];
+		}
+
+		if ( '' === $payment_id ) {
+			$payment_id = (string) $request->get_param( 'id' );
 		}
 
 		$tipo = (string) ( $request->get_param( 'type' ) ?: $request->get_param( 'topic' ) );
