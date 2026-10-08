@@ -23,7 +23,17 @@ class AdminServices {
 	const OPTION_KEY = 'simple_form_services';
 
 	const HANDLE_ADMIN_JS = 'simple-form-admin-services';
-	const SCREEN_ID       = 'toplevel_page_simple-form-services';
+
+	/**
+	 * Hook de la pantalla, tal como lo devuelve add_menu_page().
+	 *
+	 * No se escribe a mano a partir del título del menú: si el sitio está en otro
+	 * idioma ese título se traduce y el hook cambia, con lo que el JS dejaría de
+	 * encolarse sin que nadie se entere.
+	 *
+	 * @var string
+	 */
+	private $screen_id = '';
 
 	/**
 	 * Marcador que llevan los nombres de la fila modelo, que el JS sustituye
@@ -39,7 +49,7 @@ class AdminServices {
 	}
 
 	public function register_menu(): void {
-		add_menu_page(
+		$this->screen_id = (string) add_menu_page(
 			__( 'Servicios de pago', 'simple-form' ),
 			__( 'Servicios de pago', 'simple-form' ),
 			'manage_options',
@@ -55,7 +65,7 @@ class AdminServices {
 	 * @param string $hook_suffix Identificador de la pantalla actual.
 	 */
 	public function enqueue_admin_assets( string $hook_suffix ): void {
-		if ( self::SCREEN_ID !== $hook_suffix ) {
+		if ( $this->screen_id !== $hook_suffix ) {
 			return;
 		}
 

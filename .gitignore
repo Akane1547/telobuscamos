@@ -1,0 +1,5 @@
+# Dependencias y herramientas de desarrollo: no se despliegan.
+/vendor/
+/composer.phar
+/.phpunit.cache/
+/.phpunit.result.cache

@@ -1,0 +1,21 @@
+{
+	"name": "akane1547/simple-form",
+	"description": "Formulario de pago en 4 pasos con Mercado Pago para WordPress.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"require-dev": {
+		"phpunit/phpunit": "^11"
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"SimpleForm\\": "src/"
+		}
+	},
+	"config": {
+		"sort-packages": true
+	},
+	"scripts": {
+		"test": "@test:unit",
+		"test:unit": "phpunit --testsuite unit"
+	}
+}
