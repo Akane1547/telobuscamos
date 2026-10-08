@@ -21,10 +21,14 @@ final class FakeWordPress {
 	/** @var string */
 	private static $salt = 'salt-de-prueba-0123456789';
 
+	/** @var string */
+	private static $referer = 'https://telobuscamos.local/mapa/';
+
 	public static function reset(): void {
 		self::$options = array();
 		self::$home    = 'http://telobuscamos.local';
 		self::$salt    = 'salt-de-prueba-0123456789';
+		self::$referer = 'https://telobuscamos.local/mapa/';
 	}
 
 	public static function set_option( string $key, $value ): void {
@@ -51,8 +55,14 @@ final class FakeWordPress {
 		self::$home = $url;
 	}
 
-	public static function home_url(): string {
-		return self::$home;
+	/**
+	 * Mismo comportamiento que home_url() de WordPress: con ruta la agrega, sin
+	 * ruta devuelve el home tal cual.
+	 */
+	public static function home_url( string $path = '' ): string {
+		$base = rtrim( self::$home, '/' );
+
+		return '' === $path ? $base : $base . '/' . ltrim( $path, '/' );
 	}
 
 	public static function set_salt( string $salt ): void {
@@ -68,5 +78,31 @@ final class FakeWordPress {
 	 */
 	public static function sanitize_key( string $key ): string {
 		return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', $key ) );
+	}
+
+	public static function set_referer( string $url ): void {
+		self::$referer = $url;
+	}
+
+	public static function referer(): string {
+		return self::$referer;
+	}
+
+	/**
+	 * Mismo criterio que wp_validate_redirect(): solo el propio host.
+	 */
+	public static function validate_redirect( string $location, string $fallback ): string {
+		$host = (string) parse_url( $location, PHP_URL_HOST );
+
+		return ( '' !== $host && $host === parse_url( self::$home, PHP_URL_HOST ) ) ? $location : $fallback;
+	}
+
+	/**
+	 * Caso simple de add_query_arg(): el que usa la pasarela.
+	 */
+	public static function add_query_arg( string $key, string $value, string $url ): string {
+		$separator = ( false === strpos( $url, '?' ) ) ? '?' : '&';
+
+		return $url . $separator . rawurlencode( $key ) . '=' . rawurlencode( $value );
 	}
 }

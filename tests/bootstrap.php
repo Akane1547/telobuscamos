@@ -45,8 +45,8 @@ function sanitize_text_field( $value ) {
 	return trim( strip_tags( (string) $value ) );
 }
 
-function home_url() {
-	return \SimpleForm\Tests\FakeWordPress::home_url();
+function home_url( $path = '' ) {
+	return \SimpleForm\Tests\FakeWordPress::home_url( (string) $path );
 }
 
 function wp_parse_url( $url, $component = -1 ) {
@@ -55,4 +55,20 @@ function wp_parse_url( $url, $component = -1 ) {
 
 function wp_salt( $scheme = 'auth' ) {
 	return \SimpleForm\Tests\FakeWordPress::salt();
+}
+
+function __( $text, $domain = '' ) {
+	return $text;
+}
+
+function wp_get_referer() {
+	return \SimpleForm\Tests\FakeWordPress::referer();
+}
+
+function wp_validate_redirect( $location, $fallback_url = '' ) {
+	return \SimpleForm\Tests\FakeWordPress::validate_redirect( (string) $location, (string) $fallback_url );
+}
+
+function add_query_arg( $key, $value, $url = '' ) {
+	return \SimpleForm\Tests\FakeWordPress::add_query_arg( (string) $key, (string) $value, (string) $url );
 }
