@@ -92,13 +92,13 @@ class Shortcode {
 					<section class="pn-step" data-step-panel="1">
 						<div class="pn-form__row">
 							<label for="pn-full-name" class="pn-form__label"><?php esc_html_e( 'Nombre completo', 'simple-form' ); ?></label>
-							<input type="text" id="pn-full-name" name="name" class="pn-form__input" placeholder="<?php echo esc_attr__( 'Ej: Juan Pérez', 'simple-form' ); ?>" required />
+							<input type="text" id="pn-full-name" name="name" class="pn-form__input" placeholder="<?php echo esc_attr__( 'Ej: Juan Pérez', 'simple-form' ); ?>" autocomplete="name" required />
 							<span class="pn-form__error" data-error-for="name"></span>
 						</div>
 
 						<div class="pn-form__row">
 							<label for="pn-email" class="pn-form__label"><?php esc_html_e( 'Correo electrónico', 'simple-form' ); ?></label>
-							<input type="email" id="pn-email" name="email" class="pn-form__input" placeholder="tu@correo.com" required />
+							<input type="email" id="pn-email" name="email" class="pn-form__input" placeholder="tu@correo.com" autocomplete="email" inputmode="email" required />
 							<span class="pn-form__error" data-error-for="email"></span>
 						</div>
 
@@ -106,7 +106,7 @@ class Shortcode {
 							<label for="pn-phone" class="pn-form__label"><?php esc_html_e( 'Teléfono', 'simple-form' ); ?></label>
 							<div class="pn-form__input-group">
 								<span class="pn-form__prefix">+56</span>
-								<input type="tel" id="pn-phone" name="phone" class="pn-form__input" placeholder="9 1234 5678" required />
+								<input type="tel" id="pn-phone" name="phone" class="pn-form__input" placeholder="9 1234 5678" autocomplete="tel" inputmode="tel" required />
 							</div>
 							<span class="pn-form__error" data-error-for="phone"></span>
 						</div>
@@ -149,7 +149,8 @@ class Shortcode {
 										id="pn-address"
 										class="pn-form__input"
 										placeholder="<?php echo esc_attr__( 'Calle y número, comuna', 'simple-form' ); ?>"
-										autocomplete="off"
+										autocomplete="street-address"
+										enterkeyhint="search"
 										role="combobox"
 										aria-expanded="false"
 										aria-autocomplete="list"

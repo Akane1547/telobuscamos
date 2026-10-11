@@ -915,3 +915,157 @@
 	font-weight: 800;
 	color: var(--pn-primary-dark);
 }
+
+/* ==========================================================================
+   Móvil
+   --------------------------------------------------------------------------
+   Dos reglas mandan acá:
+
+   1. Los campos van a 16px. Con menos, iOS hace zoom al enfocar y el formulario
+      salta de tamaño en cada toque (medido: estaban en 15.2px).
+   2. Todo lo que se toca con el dedo llega a 44px de alto: el slider del radio
+      medía 4px, imposible de arrastrar con el pulgar.
+   ========================================================================== */
+
+@media (max-width: 600px) {
+	.pn-form-wrapper {
+		/* Sin el inflado automático de texto que iOS aplica en horizontal. */
+		-webkit-text-size-adjust: 100%;
+	}
+
+	/* 1. Nada de zoom al enfocar. */
+	.pn-form__input,
+	.pn-form__textarea,
+	.pn-form__select {
+		font-size: 16px;
+	}
+
+	.pn-form__label,
+	.pn-form__radio,
+	.pn-form__notice {
+		font-size: 1rem;
+	}
+
+	.pn-form__prefix {
+		font-size: 16px;
+	}
+
+	/* 2. Objetivos táctiles de 48px. */
+	.pn-form__input,
+	.pn-form__textarea,
+	.pn-form__select,
+	.pn-form__input-group,
+	.pn-form__radio {
+		min-height: 48px;
+	}
+
+	.pn-form__textarea {
+		min-height: 96px;
+	}
+
+	.pn-btn {
+		min-height: 48px;
+		padding: 14px 24px;
+		font-size: 1rem;
+	}
+
+	/* 3. Botones al ancho completo: se tocan con el pulgar, no con el mouse. */
+	.pn-form__nav {
+		flex-direction: column;
+		gap: 10px;
+	}
+
+	.pn-form__nav .pn-btn,
+	.pn-receipt__actions .pn-btn {
+		width: 100%;
+		margin-left: 0;
+	}
+
+	.pn-receipt__actions {
+		text-align: center;
+	}
+
+	/* 4. El slider del radio, arrastrable con el dedo. */
+	.map-plugin__radio-slider {
+		-webkit-appearance: none;
+		appearance: none;
+		height: 44px;
+		background: transparent;
+	}
+
+	.map-plugin__radio-slider::-webkit-slider-runnable-track {
+		height: 8px;
+		border-radius: var(--pn-radius-pill);
+		background: var(--pn-border);
+	}
+
+	.map-plugin__radio-slider::-moz-range-track {
+		height: 8px;
+		border-radius: var(--pn-radius-pill);
+		background: var(--pn-border);
+	}
+
+	.map-plugin__radio-slider::-webkit-slider-thumb {
+		-webkit-appearance: none;
+		appearance: none;
+		width: 26px;
+		height: 26px;
+		margin-top: -9px;
+		border-radius: 50%;
+		background: var(--pn-primary);
+		border: 3px solid #fff;
+		box-shadow: 0 2px 6px rgba(26, 26, 26, 0.25);
+	}
+
+	.map-plugin__radio-slider::-moz-range-thumb {
+		width: 26px;
+		height: 26px;
+		border-radius: 50%;
+		background: var(--pn-primary);
+		border: 3px solid #fff;
+	}
+
+	/* 5. El mapa algo más bajo, para que el resto del paso quede a la vista. */
+	.map-plugin-contenedor {
+		height: 52vh;
+		min-height: 280px;
+		max-height: 420px;
+	}
+
+	/* 6. Sugerencias del buscador y errores, legibles. */
+	.pn-address__option {
+		padding: 0.85rem 1rem;
+		font-size: 1rem;
+	}
+
+	.pn-address__status,
+	.pn-form__error {
+		font-size: 0.9rem;
+	}
+
+	/* 7. Sin retraso de 300 ms ni destello azul al tocar. */
+	.pn-btn,
+	.pn-form__radio,
+	.pn-address__option,
+	.pn-stepper__item {
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
+	}
+}
+
+/* Pantallas muy angostas (iPhone SE y similares, 320px). */
+@media (max-width: 380px) {
+	.pn-form {
+		padding: 20px 14px;
+	}
+
+	.pn-stepper__circle {
+		width: 32px;
+		height: 32px;
+		font-size: 0.85rem;
+	}
+
+	.pn-form__nav .pn-btn {
+		font-size: 0.95rem;
+	}
+}
