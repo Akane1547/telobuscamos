@@ -26,8 +26,6 @@ ob_start();
 $sf_site_root = (string) getenv( 'SF_SITE_PATH' );
 require ( '' !== $sf_site_root ? rtrim( $sf_site_root, '/' ) : dirname( __DIR__, 5 ) ) . '/wp-load.php';
 
-global $wpdb;
-
 class SF_Die extends Exception {}
 
 function sf_die_handler( $message = '', $title = '', $args = array() ) {
@@ -229,10 +227,18 @@ foreach ( array( 'providencia 1234', 'punta arenas 9999', 'valparaiso 1234' ) as
 	delete_transient( SimpleForm\Core\Geocoder::CACHE_PREFIX . md5( $consulta ) );
 }
 
-$restantes = (int) $wpdb->get_var(
-	$wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name LIKE %s", '%sf_geo_%' )
-);
-check( 'sin caché de prueba restante', $restantes, 0 );
+// Se comprueba que no quede NINGUNA de las claves de esta corrida. No se mira
+// cuántas sf_geo_ hay en total: esa caché es del sitio, no de la prueba, y
+// asertar sobre el total vuelve la suite dependiente de lo que dejó otra
+// corrida (pasó: 40 claves de verificaciones manuales hicieron fallar una suite
+// que tenía todo lo suyo en verde).
+foreach ( array( 'providencia 1234', 'punta arenas 9999', 'valparaiso 1234' ) as $consulta ) {
+	check(
+		'sin caché de "' . $consulta . '"',
+		get_transient( SimpleForm\Core\Geocoder::CACHE_PREFIX . md5( $consulta ) ),
+		false
+	);
+}
 
 printf( "\n%s\n", 0 === $failures ? 'TODO OK' : "FALLAS: {$failures}" );
 exit( $failures > 0 ? 1 : 0 );
