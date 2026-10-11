@@ -99,6 +99,21 @@ final class OrderStatus {
 	}
 
 	/**
+	 * Indica si el pedido todavía espera un veredicto del pago.
+	 *
+	 * Son los estados en los que la pasarela todavía puede responder otra cosa:
+	 * un borrador sin pagar, un pago sin confirmar y uno en revisión. En el
+	 * resto —aprobado, rechazado, cancelado, expirado— el comprador ya tiene
+	 * una respuesta, aunque un aprobado todavía admita un reembolso.
+	 *
+	 * @param string $status Estado interno.
+	 * @return bool
+	 */
+	public static function is_awaiting( string $status ): bool {
+		return in_array( $status, array( self::DRAFT, self::PENDING, self::IN_PROCESS ), true );
+	}
+
+	/**
 	 * Etiqueta visible de un estado, ya traducida.
 	 *
 	 * Los textos del recibo los decide el servidor: el front solo pinta lo que

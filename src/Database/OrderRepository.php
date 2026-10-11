@@ -236,6 +236,9 @@ final class OrderRepository {
 			'current_step' => max( 1, min( 4, (int) $order['current_step'] ) ),
 			'status'       => $status,
 			'status_label' => OrderStatus::label( $status ),
+			// El front lo usa para saber si tiene que seguir preguntando por el
+			// pago: el retorno de la pasarela no confirma nada por sí solo.
+			'is_awaiting'  => OrderStatus::is_awaiting( $status ),
 			'date'         => self::receipt_date( $order ),
 			'step1'        => $step1,
 			'step2'        => $step2,

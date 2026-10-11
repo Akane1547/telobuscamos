@@ -11,6 +11,12 @@
 		nonce: window.SimpleFormConfig ? window.SimpleFormConfig.nonce : '',
 		actions: window.SimpleFormConfig ? window.SimpleFormConfig.actions : {},
 
+		// Textos que el servidor manda para el front. Lo que ya viene en cada
+		// respuesta (etiquetas de estado, mensajes de error) no está acá.
+		i18n: window.SimpleFormConfig && window.SimpleFormConfig.i18n
+			? window.SimpleFormConfig.i18n
+			: {},
+
 		// Leaflet va empaquetado en el plugin (assets/vendor/leaflet/): el
 		// navegador ya no pide nada a un CDN de terceros. Las URLs las entrega
 		// el servidor, y se siguen cargando de forma diferida solo al llegar
@@ -35,6 +41,7 @@
 			navPrev: '[data-action="prev"]',
 			navNext: '[data-action="next"]',
 			navSubmit: '[data-action="submit"]',
+			receiptRestart: '[data-action="restart"]',
 			feedback: '.pn-form__feedback',
 			receiptBadge: '.pn-receipt__badge',
 			mapContainer: '#map-plugin',

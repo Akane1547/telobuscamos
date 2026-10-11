@@ -103,6 +103,13 @@ class Assets {
                     'css' => SIMPLE_FORM_URL . 'assets/vendor/leaflet/leaflet.css',
                     'js'  => SIMPLE_FORM_URL . 'assets/vendor/leaflet/leaflet.js',
                 ),
+                // Textos que el front necesita mostrar sin pasar por el servidor.
+                // Lo que ya viaja en cada respuesta (etiquetas de estado,
+                // mensajes de error) no se repite acá.
+                'i18n' => array(
+                    'checking'     => __( 'Verificando el pago con Mercado Pago…', 'simple-form' ),
+                    'stillPending' => __( 'Todavía no nos llegó la confirmación del pago. Podés recargar la página en un momento.', 'simple-form' ),
+                ),
             )
         );
 

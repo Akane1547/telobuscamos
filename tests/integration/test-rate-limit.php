@@ -61,6 +61,20 @@ add_filter(
 	2
 );
 
+// Cliente propio y distinto en cada corrida para esta prueba. El contador es
+// por acción y por cliente: las otras suites corren en el mismo minuto desde la
+// misma IP y dejan el contador de save_step1 ya gastado, y una corrida anterior
+// de esta misma prueba también. Con una IP nueva cada vez, el contador arranca
+// en cero y la prueba no depende del orden.
+$cliente_de_prueba = '203.0.113.' . wp_rand( 10, 250 );
+
+add_filter(
+	'simple_form_client_ip',
+	function () use ( $cliente_de_prueba ) {
+		return $cliente_de_prueba;
+	}
+);
+
 ob_start();
 
 $failures = 0;
@@ -82,6 +96,10 @@ function check( $label, $actual, $expected ) {
 function llamar( $ajax, string $metodo ): array {
 	$GLOBALS['sf_status'] = null;
 
+	// Buffer propio para esta llamada: así el ob_get_clean() de abajo se lleva
+	// SOLO lo que imprimió el endpoint y no la salida acumulada de la prueba.
+	ob_start();
+
 	try {
 		$ajax->$metodo();
 	} catch ( SF_Die $e ) {
@@ -89,7 +107,6 @@ function llamar( $ajax, string $metodo ): array {
 	}
 
 	$salida = ob_get_clean();
-	ob_start();
 
 	return array( $GLOBALS['sf_status'], json_decode( (string) $salida, true ) );
 }

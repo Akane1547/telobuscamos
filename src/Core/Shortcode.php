@@ -209,6 +209,10 @@ class Shortcode {
 								<div class="pn-receipt__row"><dt><?php esc_html_e( 'Radio', 'simple-form' ); ?></dt><dd id="pn-receipt-radius">—</dd></div>
 								<div class="pn-receipt__row pn-receipt__row--total"><dt><?php esc_html_e( 'Total pagado', 'simple-form' ); ?></dt><dd id="pn-receipt-price">$0</dd></div>
 							</dl>
+
+							<div class="pn-receipt__actions">
+								<button type="button" class="pn-btn pn-btn--ghost" data-action="restart"><?php esc_html_e( 'Hacer otro pedido', 'simple-form' ); ?></button>
+							</div>
 						</div>
 					</section>
 

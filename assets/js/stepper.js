@@ -12,6 +12,9 @@
  *      si pasa, llama al endpoint AJAX del paso correspondiente.
  *   3. El servidor es quien decide si el paso queda validado; si
  *      responde error, se muestran los errores y no se avanza.
+ *   4. Si el comprador vuelve de la pasarela (simple_form_return), se le
+ *      pregunta al servidor por el estado real del pago hasta que haya
+ *      un veredicto: el retorno por sí solo no confirma nada.
  */
 
 ( function ( window, document ) {
@@ -50,25 +53,6 @@
 		} );
 
 		return data;
-	}
-
-	/**
-	 * Alcanzado el paso de confirmación no queda nada que retomar: se
-	 * suelta el puntero de sesión para que una recarga no reabra un
-	 * pedido ya finalizado.
-	 *
-	 * @param {HTMLElement} wrapper
-	 * @return {boolean} true si el flujo quedó completo.
-	 */
-	function dropStoredSessionIfCompleted( wrapper ) {
-		const totalSteps = wrapper.querySelectorAll( SF.selectors.stepPanel ).length;
-
-		if ( SF.state.currentStep < totalSteps ) {
-			return false;
-		}
-
-		SF.clearStoredSessionId();
-		return true;
 	}
 
 	/**
@@ -125,8 +109,6 @@
 			if ( currentStep === 2 ) {
 				UI.updateSummary( wrapper, result.progress.step2 );
 			}
-
-			dropStoredSessionIfCompleted( wrapper );
 
 			renderCurrentStep( wrapper );
 		} catch ( error ) {
@@ -191,14 +173,6 @@
 			SF.state.progress = result.progress;
 			SF.state.currentStep = result.progress.current_step;
 
-			// La sesión guardada ya había terminado: no se reabre el recibo.
-			if ( dropStoredSessionIfCompleted( wrapper ) ) {
-				SF.state.progress = null;
-				SF.state.currentStep = 1;
-				renderCurrentStep( wrapper );
-				return;
-			}
-
 			if ( result.progress.step1 ) {
 				UI.fillStepData( form, result.progress.step1 );
 			}
@@ -213,6 +187,90 @@
 			SF.clearStoredSessionId();
 			renderCurrentStep( wrapper );
 		}
+	}
+
+	/**
+	 * Si el comprador vuelve de la pasarela, la URL trae simple_form_return.
+	 *
+	 * El retorno no confirma nada: es el aviso de que hay que preguntarle al
+	 * servidor. Se pregunta unas cuantas veces, porque la notificación de la
+	 * pasarela llega por otro camino y puede demorar unos segundos.
+	 *
+	 * @param {HTMLElement} wrapper
+	 */
+	async function handleReturn( wrapper ) {
+		const form = wrapper.querySelector( SF.selectors.form );
+		const params = new window.URLSearchParams( window.location.search );
+
+		if ( ! params.has( 'simple_form_return' ) ) {
+			return;
+		}
+
+		// El parámetro ya cumplió su función: se saca de la URL para que una
+		// recarga no vuelva a disparar la verificación.
+		window.history.replaceState( null, '', window.location.pathname + window.location.hash );
+
+		if ( ! SF.state.sessionId ) {
+			return;
+		}
+
+		const textos = SF.i18n || {};
+		const esperas = [ 0, 1500, 3000, 5000 ];
+
+		UI.setFeedback( form, textos.checking || '' );
+
+		let progress = SF.state.progress;
+
+		for ( const espera of esperas ) {
+			if ( espera > 0 ) {
+				await new Promise( ( resolve ) => window.setTimeout( resolve, espera ) );
+			}
+
+			try {
+				const result = await SF.request( SF.actions.getProgress );
+				progress = result.progress;
+				SF.state.progress = progress;
+			} catch ( error ) {
+				// La sesión se cayó: no hay nada que verificar.
+				UI.setFeedback( form, '' );
+				return;
+			}
+
+			if ( ! progress.is_awaiting ) {
+				break;
+			}
+		}
+
+		renderCurrentStep( wrapper );
+
+		if ( progress && progress.is_awaiting ) {
+			UI.setFeedback( form, textos.stillPending || '' );
+			return;
+		}
+
+		UI.setFeedback( form, '' );
+	}
+
+	/**
+	 * Arranca un pedido nuevo desde el recibo: suelta la sesión del navegador y
+	 * vuelve al paso 1. El puntero del servidor expira solo.
+	 *
+	 * @param {HTMLElement} wrapper
+	 */
+	function restart( wrapper ) {
+		const form = wrapper.querySelector( SF.selectors.form );
+
+		SF.clearStoredSessionId();
+		SF.state.progress = null;
+		SF.state.currentStep = 1;
+
+		if ( form ) {
+			form.reset();
+			UI.renderErrors( form, {} );
+			UI.setFeedback( form, '' );
+		}
+
+		renderCurrentStep( wrapper );
 	}
 
 	function init() {
@@ -231,7 +289,15 @@
 			goNext( wrapper ); // el paso de "pago" usa el mismo flujo de validar+guardar.
 		} );
 
-		restoreSession( wrapper );
+		const restartBtn = wrapper.querySelector( SF.selectors.receiptRestart );
+
+		if ( restartBtn ) {
+			restartBtn.addEventListener( 'click', () => restart( wrapper ) );
+		}
+
+		// Al cargar: primero se retoma la sesión y, si el comprador viene de
+		// pagar, después se verifica el estado real contra el servidor.
+		restoreSession( wrapper ).then( () => handleReturn( wrapper ) );
 	}
 
 	if ( document.readyState === 'loading' ) {
