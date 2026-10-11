@@ -79,6 +79,10 @@ class Assets {
         }
         $done = true;
 
+        // Origen del geocodificador (esquema + host), para el preconnect del
+        // front: sale de la misma constante que la URL, no se escribe dos veces.
+        $geocoder_origin = wp_parse_url( Geocoder::ENDPOINT, PHP_URL_SCHEME ) . '://' . wp_parse_url( Geocoder::ENDPOINT, PHP_URL_HOST );
+
         wp_localize_script(
             self::HANDLE_CONFIG,
             'SimpleFormConfig',
@@ -107,6 +111,19 @@ class Assets {
                 'leaflet' => array(
                     'css' => SIMPLE_FORM_URL . 'assets/vendor/leaflet/leaflet.css',
                     'js'  => SIMPLE_FORM_URL . 'assets/vendor/leaflet/leaflet.js',
+                ),
+                // Buscador de direcciones del Paso 2. El front consulta al
+                // proveedor DIRECTO (permite CORS y el navegador reusa la
+                // conexión y su caché: medido, 0,6 s contra 1,2 s pasando por
+                // PHP). La URL se expone desde acá para poder cambiar de
+                // proveedor sin tocar el JS; el endpoint propio queda como plan
+                // B y como el lugar por donde entraría una clave si algún día se
+                // pasa a un proveedor que la necesite.
+                'geocoder' => array(
+                    'url'    => Geocoder::ENDPOINT,
+                    'origin' => $geocoder_origin,
+                    'limit'  => Geocoder::LIMIT,
+                    'bbox'   => Geocoder::CHILE_BBOX,
                 ),
                 // Textos que el front necesita mostrar sin pasar por el servidor.
                 // Lo que ya viaja en cada respuesta (etiquetas de estado,

@@ -1,17 +1,24 @@
 /**
  * geocode.js
  *
- * Buscador de direcciones del Paso 2. El cliente escribe y este módulo pide las
- * sugerencias al servidor (SimpleForm.actions.geocode): el servidor es quien
- * filtra a Chile y quien cachea. Reglas duras de este módulo:
+ * Buscador de direcciones del Paso 2. Reglas duras de este módulo:
  *
- *   1. NUNCA decide una ubicación. Al elegir una sugerencia solo avisa con el
- *      evento sf:place-selected; map.js mueve el pin y pide el precio.
- *   2. Los textos visibles salen de SimpleForm.i18n, no de acá.
- *   3. Los datos del servidor se pintan con createElement + textContent.
+ *   1. NUNCA decide una ubicación ni un monto. Al elegir una sugerencia solo
+ *      avisa con el evento sf:place-selected; map.js mueve el pin y el servidor
+ *      recalcula el precio.
+ *   2. Consulta al proveedor DIRECTO desde el navegador, no por nuestro
+ *      servidor. Medido: PHP abre una conexión TLS nueva en cada petición y no
+ *      puede reusarla, así que el handshake costaba ~870 ms de los ~1,2 s de
+ *      cada búsqueda. El navegador sí reusa la conexión y respeta el
+ *      Cache-Control: max-age=3600 que manda el proveedor: la primera consulta
+ *      baja a ~0,6 s y repetir la misma dirección es instantáneo. Si la red
+ *      bloquea al proveedor, cae al endpoint propio (plan B).
+ *   3. El filtro de Chile se aplica acá, que es presentación: el servidor vuelve
+ *      a validar las coordenadas contra el polígono real al guardar el paso.
+ *   4. Los datos del proveedor se pintan con createElement + textContent.
  *      Nunca innerHTML: la dirección la escribe el cliente.
- *   4. El buscador es una ayuda: si falla, el mapa sigue funcionando con click y
- *      arrastre del pin. Este módulo no bloquea el paso.
+ *   5. El buscador es una ayuda: si todo falla, el mapa sigue funcionando con
+ *      click y arrastre del pin. Este módulo no bloquea el paso.
  */
 
 ( function ( window, document ) {
@@ -24,6 +31,7 @@
 
 	let els = {};
 	let requestToken = 0; // descarta respuestas que llegan tarde
+	let abortController = null; // corta la consulta anterior al proveedor
 	let results = [];
 	let activeIndex = -1;
 	let bound = false;
@@ -53,6 +61,132 @@
 			clearTimeout( timer );
 			timer = setTimeout( () => fn.apply( this, args ), wait );
 		};
+	}
+
+	/**
+	 * Etiqueta de una sugerencia: "Avenida Providencia 1234, Providencia".
+	 *
+	 * Es la misma idea que Geocoder::label() del servidor (que la usa en el plan
+	 * B): calle y altura, más la comuna para desambiguar. La región se omite a
+	 * propósito: repetirla en cada sugerencia solo agrega ruido.
+	 *
+	 * @param {Object} props
+	 * @return {string}
+	 */
+	function label( props ) {
+		const parts = [];
+		const street = props.street ? String( props.street ).trim() : '';
+		const number = props.housenumber ? String( props.housenumber ).trim() : '';
+
+		if ( street ) {
+			// En Chile hay calles sin numeración cargada en OSM: se muestra la
+			// calle sola antes que inventar una altura.
+			parts.push( number ? street + ' ' + number : street );
+		} else if ( props.name && String( props.name ).trim() ) {
+			parts.push( String( props.name ).trim() );
+		}
+
+		if ( ! parts.length ) {
+			return '';
+		}
+
+		const comuna = [ 'district', 'city', 'county' ]
+			.map( ( key ) => ( props[ key ] ? String( props[ key ] ).trim() : '' ) )
+			.filter( ( value ) => value )[ 0 ];
+
+		if ( comuna && comuna !== parts[ 0 ] ) {
+			parts.push( comuna );
+		}
+
+		return parts.join( ', ' );
+	}
+
+	/**
+	 * Traduce una feature del proveedor a lo que pinta el buscador. Deja afuera
+	 * todo lo que no sea de Chile: el proveedor devuelve el mundo ordenado por
+	 * relevancia.
+	 *
+	 * @param {Object} feature
+	 * @return {{label: string, lat: number, lng: number}|null}
+	 */
+	function toPlace( feature ) {
+		const props = feature && feature.properties ? feature.properties : {};
+
+		if ( 'CL' !== props.countrycode ) {
+			return null;
+		}
+
+		const coords = feature.geometry && feature.geometry.coordinates ? feature.geometry.coordinates : [];
+
+		// GeoJSON: [ longitud, latitud ].
+		if ( ! isFinite( coords[ 0 ] ) || ! isFinite( coords[ 1 ] ) ) {
+			return null;
+		}
+
+		const texto = label( props );
+
+		if ( ! texto ) {
+			return null;
+		}
+
+		return { label: texto, lat: coords[ 1 ], lng: coords[ 0 ] };
+	}
+
+	/**
+	 * Consulta al proveedor. El navegador reusa la conexión y su caché; el
+	 * AbortController corta la búsqueda anterior, así una respuesta vieja no
+	 * compite con la nueva.
+	 *
+	 * @param {string} query
+	 * @return {Promise<Array>}
+	 */
+	async function fromProvider( query ) {
+		const geocoder = SF.geocoder || {};
+		const url = geocoder.url
+			+ '?q=' + encodeURIComponent( query )
+			+ '&limit=' + ( geocoder.limit || 5 )
+			+ '&bbox=' + ( geocoder.bbox || '' );
+
+		if ( abortController ) {
+			abortController.abort();
+		}
+
+		abortController = new window.AbortController();
+
+		const response = await window.fetch( url, {
+			signal: abortController.signal,
+			credentials: 'omit', // el proveedor no tiene por qué ver las cookies del sitio
+		} );
+
+		if ( ! response.ok ) {
+			throw new Error( 'HTTP ' + response.status );
+		}
+
+		const data = await response.json();
+		const features = Array.isArray( data.features ) ? data.features : [];
+
+		return features.map( toPlace ).filter( ( place ) => null !== place );
+	}
+
+	/**
+	 * Pide las direcciones al proveedor y, si eso falla (una red que lo bloquea,
+	 * un CORS inesperado, lo que sea), al endpoint propio.
+	 *
+	 * @param {string} query
+	 * @return {Promise<Array>}
+	 */
+	async function fetchPlaces( query ) {
+		if ( SF.geocoder && SF.geocoder.url ) {
+			try {
+				return await fromProvider( query );
+			} catch ( error ) {
+				// Sigue: el servidor es el plan B.
+			}
+		}
+
+		const data = await SF.request( SF.actions.geocode, { query } );
+
+		return Array.isArray( data.results ) ? data.results : [];
 	}
 
 	function cacheElements( wrapper ) {
@@ -183,13 +317,13 @@
 		setStatus( t( 'searching', 'Buscando direcciones…' ) );
 
 		try {
-			const data = await SF.request( SF.actions.geocode, { query } );
+			const places = await fetchPlaces( query );
 
 			if ( myToken !== requestToken ) {
 				return; // hay una consulta más nueva en curso
 			}
 
-			results = Array.isArray( data.results ) ? data.results : [];
+			results = places;
 			render();
 		} catch ( error ) {
 			if ( myToken !== requestToken ) {
@@ -198,8 +332,8 @@
 
 			results = [];
 
-			// El buscador es una ayuda: si el servidor no responde, el cliente
-			// igual puede elegir la ubicación en el mapa.
+			// El buscador es una ayuda: si nada responde, el cliente igual puede
+			// elegir la ubicación en el mapa.
 			setStatus( t( 'searchError', 'No pudimos buscar direcciones. Podés tocar el mapa.' ) );
 			close();
 		}
@@ -272,6 +406,26 @@
 	}
 
 	/**
+	 * Adelanta DNS + TCP + TLS del proveedor mientras el cliente mira el mapa.
+	 * Sin esto la primera consulta paga el handshake completo (~2,9 s medidos en
+	 * frío).
+	 */
+	function preconnect() {
+		const origin = SF.geocoder ? SF.geocoder.origin : '';
+
+		if ( ! origin || document.querySelector( 'link[rel="preconnect"][href="' + origin + '"]' ) ) {
+			return;
+		}
+
+		const link = document.createElement( 'link' );
+
+		link.rel = 'preconnect';
+		link.href = origin;
+		link.crossOrigin = 'anonymous';
+		document.head.appendChild( link );
+	}
+
+	/**
 	 * @param {CustomEvent} event
 	 */
 	function onStepVisible( event ) {
@@ -279,6 +433,7 @@
 			return;
 		}
 
+		preconnect();
 		bind( event.detail.wrapper );
 	}
 

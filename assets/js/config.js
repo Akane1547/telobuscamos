@@ -25,6 +25,13 @@
 			? window.SimpleFormConfig.leaflet
 			: { css: '', js: '' },
 
+		// Proveedor de direcciones (buscador del Paso 2). La URL la manda el
+		// servidor: es el punto por donde se cambia de proveedor sin tocar este
+		// archivo.
+		geocoder: window.SimpleFormConfig && window.SimpleFormConfig.geocoder
+			? window.SimpleFormConfig.geocoder
+			: null,
+
 		// Punto de partida del pin (Santiago) y vista inicial. El encuadre
 		// definitivo lo fija el contorno que envía el servidor.
 		defaultCenter: window.SimpleFormConfig && window.SimpleFormConfig.defaultCenter
