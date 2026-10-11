@@ -56,6 +56,10 @@ llamada a `save_step2` con otra ubicación y radio 20 lo dejó en **810.000** y 
 coordenadas nuevas, sin tocar el estado.
 *Arreglo:* rechazar los pasos 1 y 2 cuando `! OrderStatus::is_awaiting( $order['status'] )`
 (409), como ya hace el paso 3.
+*Resuelto:* `save_step1` y `save_step2` responden **409** cuando el estado no espera
+veredicto, y `test-ajax-flow.php` lo prueba: sobre un pedido `approved` el monto, el radio,
+la ubicación y los datos del cliente quedan intactos, y un pedido `pending` se sigue
+editando (el caso positivo, para que el guard no rompa el flujo).
 
 **A-2 · Al retomar una sesión, el mapa pisa la ubicación guardada.**
 `restoreSession()` rellena los inputs `lat`/`lng` con lo que devolvió el servidor
@@ -71,6 +75,10 @@ la página restauró el paso 2 y los campos quedaron en −33.4489 / −70.6693,
 coordenadas de Santiago.
 *Arreglo:* si el pedido ya tiene coordenadas, centrar el mapa y el pin ahí; usar
 `defaultCenter` solo cuando no hay ninguna.
+*Resuelto:* `map.js::storedPosition()` lee las coordenadas guardadas antes de construir el
+mapa, y el pin y el círculo del radio arrancan ahí; el centro por defecto queda solo para un
+pedido nuevo. Verificado en el navegador: con un pedido en Valparaíso, los campos ahora
+quedan en −33.05 / −71.61.
 
 ### Media
 
@@ -166,11 +174,10 @@ mensajes de `validator.js` a `i18n` y usar la misma convención.
 
 ## 3. Orden propuesto de resolución
 
-1. **A-1** (guard de estado en los pasos 1 y 2) — 3 líneas, cierra la integridad del
-   pedido pagado. Con prueba de integración: escribir sobre un pedido `approved` debe
-   devolver 409 y no tocar la fila.
-2. **A-2** (el mapa no debe pisar la ubicación) — arregla la pérdida silenciosa de datos
-   y el precio equivocado al retomar.
+1. ✅ **A-1** — hecho: guard de estado en los pasos 1 y 2, con prueba de integración que
+   reproduce la vulnerabilidad medida y cubre el caso positivo.
+2. ✅ **A-2** — hecho: el mapa respeta la ubicación guardada; verificado en el navegador
+   contra el mismo caso que lo destapó.
 3. **M-3 y M-4** (credenciales: campo oculto y motivo real del fallo) — son las dos
    cosas que hoy pueden hacer perder tiempo en el panel.
 4. **M-5** (teléfono en servidor) y **B-8** (códigos HTTP) — cierran la validación.

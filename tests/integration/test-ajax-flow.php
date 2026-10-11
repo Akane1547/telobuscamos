@@ -360,6 +360,85 @@ check( 'con la etiqueta del registro', false !== strpos( $html_form, 'Mercado Pa
 check( 'y sin el aviso de que no hay medios', false === strpos( $html_form, 'No hay medios de pago disponibles' ), true );
 check( 'el campo de error del medio sigue ahí', false !== strpos( $html_form, 'data-error-for="payment_method"' ), true );
 
+echo "\n=== A-1: un pedido con el pago resuelto no se reescribe ===\n";
+
+$antes = $wpdb->get_row(
+	$wpdb->prepare( "SELECT status, amount, radius_km, full_name, lat FROM `{$table}` WHERE id = %d", $order_id ),
+	ARRAY_A
+);
+
+// El pedido de prueba se marca como pagado, con un monto conocido.
+$wpdb->update(
+	$table,
+	array( 'status' => 'approved', 'amount' => 15000, 'external_payment_id' => 'prueba-a1' ),
+	array( 'id' => $order_id ),
+	array( '%s', '%d', '%s' ),
+	array( '%d' )
+);
+
+list( $status, $json ) = call(
+	$ajax,
+	'save_step2',
+	array(
+		'session_id' => $session,
+		'service_id' => 'sf-test-plan',
+		'lat'        => '-33.05',
+		'lng'        => '-71.61',
+		'radius_km'  => '20',
+	)
+);
+
+check( 'paso 2 sobre un pedido aprobado -> 409', $status, 409 );
+
+$despues = $wpdb->get_row(
+	$wpdb->prepare( "SELECT status, amount, radius_km, full_name, lat FROM `{$table}` WHERE id = %d", $order_id ),
+	ARRAY_A
+);
+
+check( 'el monto no cambió', (int) $despues['amount'], 15000 );
+check( 'el radio no cambió', (int) $despues['radius_km'], (int) $antes['radius_km'] );
+check( 'la ubicación no cambió', $despues['lat'], $antes['lat'] );
+check( 'sigue approved', $despues['status'], 'approved' );
+
+list( $status, $json ) = call(
+	$ajax,
+	'save_step1',
+	array(
+		'session_id' => $session,
+		'name'       => 'Otro Nombre',
+		'email'      => 'otro@example.test',
+		'phone'      => '911111111',
+	)
+);
+
+check( 'paso 1 sobre un pedido aprobado -> 409', $status, 409 );
+
+$despues = $wpdb->get_row( $wpdb->prepare( "SELECT full_name FROM `{$table}` WHERE id = %d", $order_id ), ARRAY_A );
+check( 'los datos del cliente no se reescribieron', $despues['full_name'], $antes['full_name'] );
+
+// Y el caso que tiene que seguir funcionando: mientras el pago espera
+// veredicto, el comprador puede corregir sus datos.
+$wpdb->update( $table, array( 'status' => 'pending' ), array( 'id' => $order_id ), array( '%s' ), array( '%d' ) );
+
+list( $status, $json ) = call(
+	$ajax,
+	'save_step2',
+	array(
+		'session_id' => $session,
+		'service_id' => 'sf-test-plan',
+		'lat'        => '-33.0500000',
+		'lng'        => '-71.6100000',
+		'radius_km'  => '20',
+	)
+);
+
+check( 'un pedido pendiente se sigue editando', $json['success'], true );
+check(
+	'y guarda el radio nuevo',
+	(int) $wpdb->get_var( $wpdb->prepare( "SELECT radius_km FROM `{$table}` WHERE id = %d", $order_id ) ),
+	20
+);
+
 echo "\n=== Limpieza ===\n";
 $deleted = $wpdb->query( $wpdb->prepare( "DELETE FROM `{$table}` WHERE id > %d", $max_id ) );
 delete_transient( 'sf_client_session_' . $session );

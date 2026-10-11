@@ -306,6 +306,13 @@ class Ajax {
 		$order = $this->find_order_by_session( $session_id );
 
 		if ( null !== $order ) {
+			// Un pedido con el pago ya resuelto no se toca: reescribirle los datos
+			// o el monto después de que la pasarela cobró deja la base en
+			// desacuerdo con el cobro. Es el mismo 409 del paso 3.
+			if ( ! OrderStatus::is_awaiting( (string) $order['status'] ) ) {
+				wp_send_json_error( array( 'message' => __( 'Este pedido ya tiene el pago resuelto: no se puede modificar.', 'simple-form' ) ), 409 );
+			}
+
 			// Mismo pedido: se reescribe el paso 1, sin crear filas nuevas.
 			OrderRepository::update(
 				(int) $order['id'],
@@ -354,6 +361,13 @@ class Ajax {
 
 		if ( null === $order ) {
 			wp_send_json_error( array( 'message' => __( 'Sesión expirada. Recarga el formulario.', 'simple-form' ) ), 410 );
+		}
+
+		// El snapshot de servicio, ubicación y monto no se reescribe cuando el
+		// pago ya está resuelto: la base tiene que seguir diciendo lo mismo que
+		// cobró la pasarela.
+		if ( ! OrderStatus::is_awaiting( (string) $order['status'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'Este pedido ya tiene el pago resuelto: no se puede modificar.', 'simple-form' ) ), 409 );
 		}
 
 		if ( ! OrderRepository::is_step_complete( $order, 1 ) ) {

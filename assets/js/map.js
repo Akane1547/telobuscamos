@@ -36,6 +36,26 @@
 	let currentWrapper = null;
 
 	/**
+	 * Coordenadas ya guardadas del pedido, si las hay.
+	 *
+	 * Al restaurar una sesión el servidor las deja en los inputs ocultos. Se
+	 * leen antes de construir el mapa: si no, el pin arranca en el centro por
+	 * defecto y pisa la ubicación que el comprador ya había elegido.
+	 *
+	 * @return {{lat: number, lng: number}|null}
+	 */
+	function storedPosition() {
+		const lat = els.latHidden ? parseFloat( els.latHidden.value ) : NaN;
+		const lng = els.lngHidden ? parseFloat( els.lngHidden.value ) : NaN;
+
+		if ( ! isFinite( lat ) || ! isFinite( lng ) ) {
+			return null;
+		}
+
+		return { lat, lng };
+	}
+
+	/**
 	 * Debounce genérico: evita disparar una llamada AJAX en cada pixel
 	 * que se arrastra el slider o el marcador.
 	 *
@@ -248,9 +268,14 @@
 			return;
 		}
 
-		const center = SF.defaultCenter;
+		// La vista inicial la encuadra el contorno que manda el servidor (más
+		// abajo), pero el pin va donde el comprador lo dejó: si el pedido ya
+		// tenía coordenadas guardadas, el mapa arranca ahí y no en el centro
+		// por defecto.
+		const guardado = storedPosition();
+		const center   = guardado || { lat: SF.defaultCenter.lat, lng: SF.defaultCenter.lng };
 
-		mapa = window.L.map( container ).setView( [ center.lat, center.lng ], center.zoom );
+		mapa = window.L.map( container ).setView( [ center.lat, center.lng ], SF.defaultCenter.zoom );
 
 		window.L.tileLayer( 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 			attribution: '&copy; OpenStreetMap contributors',
