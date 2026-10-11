@@ -273,7 +273,7 @@ class AdminPayments {
 
 		if ( 'constant' === $source ) {
 			printf(
-				'<input type="text" class="regular-text" disabled="disabled" value="" placeholder="%s" />',
+				'<input type="password" class="regular-text" disabled="disabled" value="" placeholder="%s" />',
 				esc_attr__( 'definida en wp-config.php', 'simple-form' )
 			);
 			printf(
@@ -293,8 +293,11 @@ class AdminPayments {
 			? __( '•••••••• — escribe solo si quieres cambiarla', 'simple-form' )
 			: __( 'sin configurar', 'simple-form' );
 
+		// type=password: la credencial no se lee mientras se escribe ni queda
+		// expuesta al autocompletado o a una extension del navegador. El
+		// navegador tampoco la ofrece guardar.
 		printf(
-			'<input type="text" class="regular-text" name="%s" value="" autocomplete="off" placeholder="%s" />',
+			'<input type="password" class="regular-text" name="%s" value="" autocomplete="new-password" spellcheck="false" placeholder="%s" />',
 			esc_attr( $name ),
 			esc_attr( $placeholder )
 		);
