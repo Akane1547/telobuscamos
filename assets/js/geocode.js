@@ -252,7 +252,7 @@
 
 		if ( 0 === results.length ) {
 			close();
-			setStatus( t( 'searchNoResults', 'Sin resultados. Probá con calle y comuna, o tocá el mapa.' ) );
+			setStatus( t( 'searchNoResults', 'Sin resultados. Prueba con calle y comuna, o toca el mapa.' ) );
 			return;
 		}
 
@@ -334,7 +334,7 @@
 
 			// El buscador es una ayuda: si nada responde, el cliente igual puede
 			// elegir la ubicación en el mapa.
-			setStatus( t( 'searchError', 'No pudimos buscar direcciones. Podés tocar el mapa.' ) );
+			setStatus( t( 'searchError', 'No pudimos buscar direcciones. Puedes tocar el mapa.' ) );
 			close();
 		}
 	}
@@ -354,7 +354,7 @@
 
 		if ( query.length < MIN_CHARS ) {
 			close();
-			setStatus( query.length > 0 ? t( 'searchMore', 'Escribí al menos 3 letras.' ) : '' );
+			setStatus( query.length > 0 ? t( 'searchMore', 'Escribe al menos 3 letras.' ) : '' );
 
 			return;
 		}

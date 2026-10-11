@@ -42,6 +42,12 @@ class AdminServices {
 	 */
 	const MODEL_MARKER = '__NEXT__';
 
+	/**
+	 * Tope de planes. El paso 2 los pinta como radios y la opción se autoloada en
+	 * cada petición, así que no tiene sentido aceptar un envío enorme.
+	 */
+	const MAX_SERVICES = 50;
+
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_post_sf_save_services', array( $this, 'handle_save' ) );
@@ -91,6 +97,11 @@ class AdminServices {
 			<?php if ( isset( $_GET['updated'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['updated'] ) ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
 				<div class="notice notice-success is-dismissible">
 					<p><?php esc_html_e( 'Servicios guardados.', 'simple-form' ); ?></p>
+				</div>
+			<?php endif; ?>
+			<?php if ( isset( $_GET['error'] ) && 'too-many' === sanitize_text_field( wp_unslash( $_GET['error'] ) ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
+				<div class="notice notice-warning is-dismissible">
+					<p><?php printf( esc_html__( 'Se guardaron los primeros %d planes: el formulario no acepta más de %d.', 'simple-form' ), (int) self::MAX_SERVICES, (int) self::MAX_SERVICES ); ?></p>
 				</div>
 			<?php endif; ?>
 			<p><?php esc_html_e( 'Estos planes alimentan el select del Paso 2 del formulario. Los precios son en pesos chilenos, sin decimales.', 'simple-form' ); ?></p>
@@ -180,6 +191,7 @@ class AdminServices {
 		$raw      = isset( $_POST['services'] ) && is_array( $_POST['services'] ) ? wp_unslash( $_POST['services'] ) : array();
 		$services = array();
 		$seen     = array();
+		$sobran   = false;
 
 		foreach ( $raw as $row ) {
 			if ( ! is_array( $row ) ) {
@@ -195,6 +207,12 @@ class AdminServices {
 				continue;
 			}
 
+			// Tope de filas: se guardan las primeras y el resto se avisa.
+			if ( count( $services ) >= self::MAX_SERVICES ) {
+				$sobran = true;
+				break;
+			}
+
 			$seen[ $id ] = true;
 
 			$services[] = array(
@@ -206,6 +224,11 @@ class AdminServices {
 		}
 
 		update_option( self::OPTION_KEY, $services );
+
+		if ( $sobran ) {
+			wp_safe_redirect( admin_url( 'admin.php?page=simple-form-services&error=too-many' ) );
+			exit;
+		}
 
 		wp_safe_redirect( admin_url( 'admin.php?page=simple-form-services&updated=1' ) );
 		exit;

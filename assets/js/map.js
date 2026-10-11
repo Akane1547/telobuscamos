@@ -15,8 +15,9 @@
  *      Leaflet dentro de un contenedor con "hidden" o display:none es
  *      la causa típica de los tiles grises: Leaflet mide 0x0px y no
  *      vuelve a recalcular solo.
- *   4. Los errores solo van a console.error — no se le muestran al
- *      usuario en este módulo (así se pidió: revisar en consola).
+ *   4. Los errores del mapa van a console.error y, además, se pintan en el
+ *      formulario (ver requestPrice): el cliente ve que algo falló, no solo la
+ *      consola.
  */
 
 ( function ( window, document ) {

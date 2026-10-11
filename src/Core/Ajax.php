@@ -63,7 +63,7 @@ class Ajax {
 
 		if ( empty( $nonce ) || ! wp_verify_nonce( $nonce, 'simple_form_nonce' ) ) {
 			wp_send_json_error(
-				array( 'message' => 'Validación de seguridad fallida (Nonce inválido).' ),
+				array( 'message' => __( 'Validación de seguridad fallida. Recargá la página.', 'simple-form' ) ),
 				403
 			);
 		}
@@ -88,7 +88,7 @@ class Ajax {
 		return null;
 	}
 
-		/**
+	/**
 	 * Lee y valida lat/lng del POST. Devuelve [lat, lng] o null.
 	 */
 	private function read_coordinates(): ?array {
@@ -126,19 +126,41 @@ class Ajax {
 	}
 
 	/**
+	 * Normaliza el teléfono chileno: 9 dígitos que empiezan con 9.
+	 *
+	 * Acepta lo que la gente escribe de verdad (+56 9 1234 5678, 9-1234-5678,
+	 * 912345678) y devuelve solo los dígitos. El cliente ya lo valida, pero el
+	 * servidor no puede confiar en eso: este número queda en el pedido y en el
+	 * recibo.
+	 *
+	 * @param string $raw
+	 * @return string 9 dígitos, o '' si no es un celular chileno válido.
+	 */
+	private function normalize_phone( string $raw ): string {
+		$digits = (string) preg_replace( '/\D+/', '', $raw );
+
+		// "+56 9 1234 5678" llega como 56912345678: se descarta el código de país.
+		if ( 11 === strlen( $digits ) && 0 === strpos( $digits, '56' ) ) {
+			$digits = substr( $digits, 2 );
+		}
+
+		return preg_match( '/^9\d{8}$/', $digits ) ? $digits : '';
+	}
+
+	/**
 	 * Precios del servicio en CLP entero.
 	 *
-	 * La opción los guarda como float, pero el dinero del plugin es entero
-	 * (souls.md §8.3). Se redondea una sola vez, aquí: ese valor redondeado es
-	 * el que se calcula y el que se guarda como snapshot en el pedido.
+	 * El admin los guarda ya como enteros (absint + round), así que acá no hay
+	 * nada que redondear: pasarlos por float sería hacer aritmética de dinero en
+	 * punto flotante, que es justo lo que el plugin no hace (souls.md §8.3).
 	 *
 	 * @param array $service
 	 * @return array [ precio base, precio por km ].
 	 */
 	private function service_prices( array $service ): array {
 		return array(
-			(int) round( (float) ( $service['base_price'] ?? 0 ) ),
-			(int) round( (float) ( $service['price_per_km'] ?? 0 ) ),
+			absint( $service['base_price'] ?? 0 ),
+			absint( $service['price_per_km'] ?? 0 ),
 		);
 	}
 
@@ -311,10 +333,14 @@ class Ajax {
 
 		$name  = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
 		$email = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
-		$phone = sanitize_text_field( wp_unslash( $_POST['phone'] ?? '' ) );
+		$phone = $this->normalize_phone( sanitize_text_field( wp_unslash( $_POST['phone'] ?? '' ) ) );
 
-		if ( '' === $name || ! is_email( $email ) || '' === $phone ) {
+		if ( '' === $name || ! is_email( $email ) ) {
 			wp_send_json_error( array( 'message' => __( 'Por favor completa todos los campos requeridos.', 'simple-form' ) ), 422 );
+		}
+
+		if ( '' === $phone ) {
+			wp_send_json_error( array( 'message' => __( 'El teléfono debe tener 9 dígitos y empezar con 9 (celular chileno).', 'simple-form' ) ), 422 );
 		}
 
 		$customer = array(
@@ -392,7 +418,8 @@ class Ajax {
 		}
 
 		if ( ! OrderRepository::is_step_complete( $order, 1 ) ) {
-			wp_send_json_error( array( 'message' => __( 'Debes completar el paso 1 antes de continuar.', 'simple-form' ) ), 403 );
+			// 422 y no 403: falta un dato del flujo, no permiso.
+			wp_send_json_error( array( 'message' => __( 'Debes completar el paso 1 antes de continuar.', 'simple-form' ) ), 422 );
 		}
 
 

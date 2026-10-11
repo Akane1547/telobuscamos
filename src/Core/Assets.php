@@ -130,11 +130,21 @@ class Assets {
                 // mensajes de error) no se repite acá.
                 'i18n' => array(
                     'checking'     => __( 'Verificando el pago con Mercado Pago…', 'simple-form' ),
-                    'stillPending' => __( 'Todavía no nos llegó la confirmación del pago. Podés recargar la página en un momento.', 'simple-form' ),
+                    'stillPending' => __( 'Todavía no nos llegó la confirmación del pago. Puedes recargar la página en un momento.', 'simple-form' ),
                     'searching'    => __( 'Buscando direcciones…', 'simple-form' ),
-                    'searchMore'   => __( 'Escribí al menos 3 letras.', 'simple-form' ),
-                    'searchNoResults' => __( 'Sin resultados. Probá con calle y comuna, o tocá el mapa.', 'simple-form' ),
-                    'searchError'  => __( 'No pudimos buscar direcciones. Podés tocar el mapa.', 'simple-form' ),
+                    'searchMore'   => __( 'Escribe al menos 3 letras.', 'simple-form' ),
+                    'searchNoResults' => __( 'Sin resultados. Prueba con calle y comuna, o toca el mapa.', 'simple-form' ),
+                    'searchError'  => __( 'No pudimos buscar direcciones. Puedes tocar el mapa.', 'simple-form' ),
+                    // Mensajes del validador del cliente (validator.js). El
+                    // servidor vuelve a validar lo mismo con sus propias reglas.
+                    'errName'      => __( 'Ingresa tu nombre completo.', 'simple-form' ),
+                    'errEmail'     => __( 'Correo electrónico inválido.', 'simple-form' ),
+                    'errPhone'     => __( 'Ingresa un teléfono chileno válido (9 dígitos, empieza con 9).', 'simple-form' ),
+                    'errService'   => __( 'Selecciona un servicio.', 'simple-form' ),
+                    'errLocation'  => __( 'Selecciona una ubicación en el mapa.', 'simple-form' ),
+                    'errRadius'    => __( 'El radio debe estar entre 1 y 20 km.', 'simple-form' ),
+                    'errPayment'   => __( 'Selecciona un medio de pago.', 'simple-form' ),
+                    'errGeneric'   => __( 'No se pudo guardar. Revisa los datos e inténtalo de nuevo.', 'simple-form' ),
                 ),
             )
         );

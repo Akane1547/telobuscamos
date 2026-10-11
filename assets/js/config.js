@@ -138,7 +138,7 @@
 			}
 			
 		},
-				clearStoredSessionId() {
+		clearStoredSessionId() {
 			this.state.sessionId = null;
 			try {
 				window.localStorage.removeItem( STORAGE_KEY );

@@ -103,14 +103,16 @@ $max_id = (int) $wpdb->get_var( "SELECT MAX(id) FROM `{$table}`" );
 
 // Servicio temporal: la opción guarda floats a propósito para probar el redondeo.
 $services_before = get_option( 'simple_form_services', null );
+// La opción guarda enteros: AdminServices los escribe con absint + round, y el
+// servidor no vuelve a hacer aritmética de dinero en punto flotante (B-10).
 update_option(
 	'simple_form_services',
 	array(
 		array(
 			'id'           => 'sf-test-plan',
 			'label'        => 'Plan de prueba',
-			'base_price'   => 10000.6,
-			'price_per_km' => 500.4,
+			'base_price'   => 10001,
+			'price_per_km' => 500,
 		),
 	)
 );
@@ -181,7 +183,7 @@ echo "\n=== Paso 2: precio y snapshot ===\n";
 list( $status, $json ) = call( $ajax, 'save_step2', array( 'session_id' => $session, 'service_id' => 'sf-test-plan', 'estimated_price' => 1 ) + $santiago + array( 'radius_km' => 5 ) );
 check( 'success = true', $json['success'], true );
 check( 'current_step = 3', $json['data']['progress']['current_step'], 3 );
-// 10000.6 -> 10001 y 500.4 -> 500: 10001 + 500*5 = 12501
+// 10001 + 500*5 = 12501
 check( 'precio redondeado a CLP entero', $json['data']['progress']['step2']['estimated_price'], 12501 );
 check( 'etiqueta del servicio guardada', $json['data']['progress']['step2']['service_label'], 'Plan de prueba' );
 
@@ -437,6 +439,43 @@ check(
 	'y guarda el radio nuevo',
 	(int) $wpdb->get_var( $wpdb->prepare( "SELECT radius_km FROM `{$table}` WHERE id = %d", $order_id ) ),
 	20
+);
+
+echo "\n=== Un precio corrupto en la opción no rompe ni da negativo ===\n";
+
+// Un valor negativo o con decimales no puede salir del admin (absint + round),
+// pero la opción es editable: el pedido no puede terminar con un monto negativo.
+update_option(
+	'simple_form_services',
+	array(
+		array(
+			'id'           => 'sf-test-plan',
+			'label'        => 'Plan de prueba',
+			'base_price'   => -10000.6,
+			'price_per_km' => -500.4,
+		),
+	)
+);
+
+list( $status, $json ) = call(
+	$ajax,
+	'calculate_price',
+	array( 'session_id' => $session, 'service_id' => 'sf-test-plan' ) + $santiago + array( 'radius_km' => 5 )
+);
+
+check( 'se normaliza a entero positivo', $json['data']['price'], 12500 );
+
+// Se deja la opción como estaba para el resto de la suite.
+update_option(
+	'simple_form_services',
+	array(
+		array(
+			'id'           => 'sf-test-plan',
+			'label'        => 'Plan de prueba',
+			'base_price'   => 10001,
+			'price_per_km' => 500,
+		),
+	)
 );
 
 echo "\n=== Limpieza ===\n";
