@@ -1,6 +1,7 @@
 # Auditoría del plugin simple-form
 
-Fecha: 2026-10-08 · Rama: `fase-6` · Alcance: código, estructura y seguridad.
+Fecha: 2026-10-08 · Rama: `hallazgos` · **Estado: 19 de 19 hallazgos resueltos o decididos
+(cerrado el 2026-10-11).**
 
 ## Cómo se hizo
 
@@ -127,6 +128,14 @@ Todo el JS se verificó a mano en el navegador (y así se encontraron A-2 y las 
 regresiones de la Fase 6), pero nada lo cubre en CI. Los fallos de UI de esta sesión se
 detectaron por suerte y a mano. *Arreglo:* al menos un guion reproducible de los flujos
 (1→4, retorno aprobado, retorno pendiente) que se pueda correr con el sitio arriba.
+*Resuelto:* `tests/front/smoke.mjs`, sin dependencias (habla el protocolo CDP con el
+WebSocket que ya trae Node 22; `SF_CHROME` permite apuntar a otro navegador). Levanta Chrome
+headless y comprueba: la consola sin errores, la validación del paso 1 con las reglas del
+teléfono, el formulario a 375px (campos de 16px, controles de 44px, el slider, sin scroll
+horizontal), el buscador de direcciones contra el proveedor real (sugerencias, pin movido),
+el precio calculado por el servidor y el recibo en sus dos estados. Se corre con
+`composer test:front`. Lo que no cubre —el pago real y el webhook— necesita el túnel HTTPS y
+lo cubren las suites de PHP.
 
 **M-7 · Las cadenas visibles del front están escritas en el JS.**
 `validator.js` (todos los mensajes de error) y `stepper.js`/`ui.js` en lo que se agregó
@@ -202,11 +211,13 @@ mensajes de `validator.js` a `i18n` y usar la misma convención.
    contra el mismo caso que lo destapó.
 3. ✅ **M-3 y M-4** — hecho: campos `type=password` con `autocomplete=new-password`, y el panel
    dice el motivo real del fallo (antes culpaba siempre al HTTPS).
-4. **M-5** (teléfono en servidor) y **B-8** (códigos HTTP) — cierran la validación.
-5. **M-6** (guion reproducible de los flujos del front) — antes de tocar más el JS.
-6. **M-1** (tiles) — decisión de producto, no de código: hay que elegir proveedor o
-   aceptar la dependencia por escrito.
-7. **B-1 a B-15** — se agrupan en una pasada de higiene cuando el resto esté cerrado.
+4. ✅ **M-5 y B-8** — hechos: el teléfono se normaliza y se valida en el servidor, y los
+   códigos HTTP quedaron parejos (422 donde faltaba un dato, no 403).
+5. ✅ **M-6** — hecho: `tests/front/smoke.mjs`, `composer test:front` (ver arriba).
+6. ✅ **M-1** — decidido y documentado: los tiles de OSM se aceptan como dependencia, con la
+   línea exacta que habría que cambiar si el sitio crece.
+7. ✅ **B-1 a B-15** — hechos o decididos, cada uno con su motivo escrito. Ninguno queda
+   abierto.
 
 ## 4. Fuera de alcance de esta auditoría
 
