@@ -83,7 +83,6 @@
 			latHidden: wrapper.querySelector( '#pn-lat' ),
 			lngHidden: wrapper.querySelector( '#pn-lng' ),
 			radiusHidden: wrapper.querySelector( '#pn-radius' ),
-			priceHidden: wrapper.querySelector( '#pn-price' ),
 			mapError: wrapper.querySelector( SF.selectors.errorFor( 'map_location' ) ),
 		};
 	}
@@ -144,7 +143,6 @@
 			}
 
 			els.priceValueEl.textContent = '$' + Math.round( result.price ).toLocaleString( 'es-CL' );
-			els.priceHidden.value = result.price;
 
 			if ( els.mapError ) {
 				els.mapError.textContent = '';
@@ -180,7 +178,6 @@
 			// el resumen afirmarían un monto que no es de esta ubicación. El monto
 			// que se guarda lo recalcula el servidor igualmente.
 			els.priceValueEl.textContent = '$0';
-			els.priceHidden.value = 0;
 
 			document.dispatchEvent(
 				new CustomEvent( SF.events.priceUpdated, {
@@ -278,6 +275,10 @@
 
 		mapa = window.L.map( container ).setView( [ center.lat, center.lng ], SF.defaultCenter.zoom );
 
+		// Tiles de OpenStreetMap: dependencia aceptada y documentada en
+		// AUDITORIA.md (M-1). La política de uso de OSM es para tráfico moderado:
+		// si el sitio crece, corresponde un proveedor propio o con clave, y el
+		// cambio es esta línea.
 		window.L.tileLayer( 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 			attribution: '&copy; OpenStreetMap contributors',
 			maxZoom: 19,

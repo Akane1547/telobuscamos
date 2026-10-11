@@ -88,6 +88,10 @@ están empaquetados por decisión del proyecto ("cero terceros"), pero el mapa s
 dependiendo de un servicio externo: si su política de uso lo corta, el paso 2 se queda
 sin mapa. *Arreglo:* decidir un proveedor de tiles propio o con clave, o documentarlo
 como dependencia aceptada.
+*Resuelto (decisión):* se acepta como dependencia, por coherencia con el geocodificador
+(Photon también es OSM) y porque el tráfico de un negocio local entra en su política de uso.
+Queda anotado en `map.js`, en la línea que lo carga. Si el sitio crece, el cambio es esa
+línea y hay que elegir proveedor con clave.
 
 **M-2 · No hay guard de estado en las escrituras de los pasos 1 y 2.** Es A-1, listado
 aparte porque el arreglo es una sola condición y conviene tratarlo como una unidad.
@@ -142,6 +146,10 @@ mensajes de `validator.js` a `i18n` y usar la misma convención.
 - **B-3 · Código muerto.** `PaymentEventRepository::find_by_order()` sin consumidores y
   `OrderStatus::is_final()` sin uso desde la Fase 6. Se pueden dejar como API interna o
   borrar; hoy no los llama nadie.
+  *Resuelto (decisión):* se mantienen los dos, y no por descuido. `find_by_order()` es la
+  lectura del historial de eventos de un pedido (el consumidor que falta es la pantalla de
+  pedidos) e `is_final()` es la invariante que usan las pruebas de la máquina de estados
+  para comprobar que el grafo es coherente. Los dos tienen pruebas propias.
 - **B-4 · El error de `setFeedback` no es defensivo.** `ui.js:100-102` hace
   `el.textContent` sin comprobar que el elemento exista, a diferencia del resto del
   archivo. Con un tema que quite `.pn-form__feedback` se rompe el handler.
@@ -164,6 +172,9 @@ mensajes de `validator.js` a `i18n` y usar la misma convención.
   `PaymentEventRepository::payload()` recorta a 65.535 caracteres
   (`PaymentEventRepository.php:147`): si algún día se guarda un payload grande, queda un
   JSON inválido en la columna.
+  *Resuelto:* un payload que no entra ya no se corta: se guarda
+  `{"truncated":true,"bytes":N,"reason":"payload_too_large"}`, que es JSON válido y dice
+  lo único que se puede afirmar sin inventar datos.
 - **B-12 · `ini_set('serialize_precision')` es best-effort.** Si el hosting lo prohíbe,
   `get_coverage_area` responde el doble de grande (`Ajax.php:271`).
 - **B-13 · Estilo e indentación mezclados.** `Ajax.php` (líneas 91, 223, 363, 368),
@@ -176,6 +187,10 @@ mensajes de `validator.js` a `i18n` y usar la misma convención.
 - **B-15 · El nonce no está atado a la sesión.** Es la limitación conocida de WordPress
   (S-03 de `souls.md`): una página cacheada puede servir el nonce de otro visitante. El
   rate limit y la validación en servidor lo compensan; queda documentado.
+  *Resuelto (aceptado):* no se puede arreglar sin salir del mecanismo de nonces de
+  WordPress. Lo que protege de verdad ya está: el nonce no decide nada, cada endpoint
+  valida su entrada, el monto y el estado los calcula el servidor y el rate limit corta el
+  abuso. Queda como limitación conocida, no como pendiente.
 
 ---
 

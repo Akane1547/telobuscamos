@@ -143,15 +143,21 @@ final class PaymentEventRepositoryTest extends TestCase {
 		$this->assertNull( $GLOBALS['wpdb']->ultimo_insert );
 	}
 
-	public function test_un_payload_gigante_se_recorta(): void {
+	/**
+	 * Un payload que no entra no se corta a la mitad: quedaría un JSON que nadie
+	 * puede volver a leer. Se guarda el hecho y el tamaño (B-11).
+	 */
+	public function test_un_payload_gigante_no_se_corta(): void {
 		PaymentEventRepository::record(
 			$this->evento( array( 'payload' => array( 'relleno' => str_repeat( 'x', PaymentEventRepository::MAX_PAYLOAD + 500 ) ) ) )
 		);
 
-		$this->assertSame(
-			PaymentEventRepository::MAX_PAYLOAD,
-			strlen( $GLOBALS['wpdb']->ultimo_insert['datos']['payload'] )
-		);
+		$json = json_decode( (string) $GLOBALS['wpdb']->ultimo_insert['datos']['payload'], true );
+
+		$this->assertIsArray( $json, 'lo guardado tiene que seguir siendo JSON legible' );
+		$this->assertTrue( $json['truncated'] );
+		$this->assertSame( 'payload_too_large', $json['reason'] );
+		$this->assertGreaterThan( PaymentEventRepository::MAX_PAYLOAD, (int) $json['bytes'] );
 	}
 
 	public function test_un_payload_nulo_se_guarda_como_nulo(): void {

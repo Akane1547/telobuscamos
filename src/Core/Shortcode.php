@@ -188,7 +188,6 @@ class Shortcode {
 							<input type="hidden" id="pn-lat" name="lat" value="" />
 							<input type="hidden" id="pn-lng" name="lng" value="" />
 							<input type="hidden" id="pn-radius" name="radius_km" value="1" />
-							<input type="hidden" id="pn-price" name="estimated_price" value="0" />
 						</div>
 					</section>
 

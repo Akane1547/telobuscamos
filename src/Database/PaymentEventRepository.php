@@ -44,7 +44,6 @@ final class PaymentEventRepository {
 	 * mandar solo los campos que necesita, sin datos personales del pagador.
 	 */
 	const MAX_PAYLOAD = 65535;
-
 	/**
 	 * Registra un evento de pago.
 	 *
@@ -144,6 +143,19 @@ final class PaymentEventRepository {
 			return null;
 		}
 
-		return strlen( $json ) > self::MAX_PAYLOAD ? substr( $json, 0, self::MAX_PAYLOAD ) : $json;
+		if ( strlen( $json ) <= self::MAX_PAYLOAD ) {
+			return $json;
+		}
+
+		// Nunca cortar el JSON a la mitad: quedaría un valor que nadie puede
+		// volver a leer. Si no entra, se guarda el hecho y el tamaño, que es lo
+		// único que se puede afirmar sin inventar datos.
+		return (string) wp_json_encode(
+			array(
+				'truncated' => true,
+				'bytes'     => strlen( $json ),
+				'reason'    => 'payload_too_large',
+			)
+		);
 	}
 }
