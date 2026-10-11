@@ -181,7 +181,9 @@ final class PaymentConfig {
 
 		$all[ $gateway_id ] = $set;
 
-		update_option( self::OPTION_CREDENTIALS, $all );
+		// Autoload en false: es un criptograma que solo necesita quien va a pagar,
+		// no cada petición del sitio (B-1).
+		update_option( self::OPTION_CREDENTIALS, $all, false );
 
 		return '';
 	}

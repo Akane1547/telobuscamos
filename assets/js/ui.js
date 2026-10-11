@@ -99,6 +99,13 @@
 		 */
 		setFeedback( form, message, type = '' ) {
 			const el = form.querySelector( selectors.feedback );
+
+			// Defensivo como el resto del módulo: un tema que quite el área de
+			// feedback no puede romper el handler.
+			if ( ! el ) {
+				return;
+			}
+
 			el.textContent = message;
 			el.className = 'pn-form__feedback' + ( type ? ` pn-form__feedback--${ type }` : '' );
 		},

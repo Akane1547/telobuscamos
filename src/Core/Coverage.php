@@ -157,7 +157,30 @@ final class Coverage {
 			return self::$outline;
 		}
 
-		self::$outline = self::section( 'outline' );
+		// 5 decimales son ~1 metro: de sobra para dibujar el país, y así la
+		// respuesta no depende de serialize_precision del hosting. Con
+		// serialize_precision=17 (lo que trae php-fpm en muchos hostings) cada
+		// coordenada se imprime con 17 dígitos y esta respuesta pesa el doble.
+		// La validación sigue usando rings(), que no se redondea.
+		self::$outline = array_map(
+			static function ( $ring ) {
+				if ( ! is_array( $ring ) ) {
+					return $ring;
+				}
+
+				return array_map(
+					static function ( $point ) {
+						if ( ! is_array( $point ) || ! isset( $point[0], $point[1] ) ) {
+							return $point;
+						}
+
+						return array( round( (float) $point[0], 5 ), round( (float) $point[1], 5 ) );
+					},
+					$ring
+				);
+			},
+			self::section( 'outline' )
+		);
 
 		return self::$outline;
 	}

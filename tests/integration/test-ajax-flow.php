@@ -101,7 +101,6 @@ $ajax   = new $Ajax();
 $table  = \SimpleForm\Database\Database::table_name( \SimpleForm\Database\Database::TABLE_ORDERS );
 $max_id = (int) $wpdb->get_var( "SELECT MAX(id) FROM `{$table}`" );
 
-// Servicio temporal: la opción guarda floats a propósito para probar el redondeo.
 $services_before = get_option( 'simple_form_services', null );
 // La opción guarda enteros: AdminServices los escribe con absint + round, y el
 // servidor no vuelve a hacer aritmética de dinero en punto flotante (B-10).

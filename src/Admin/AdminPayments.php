@@ -439,9 +439,21 @@ class AdminPayments {
 			$campos = array();
 
 			foreach ( Gateways::credential_fields( $id ) as $field ) {
-				if ( isset( $entrada[ $field ] ) && is_string( $entrada[ $field ] ) && '' !== trim( $entrada[ $field ] ) ) {
-					$campos[ $field ] = sanitize_text_field( $entrada[ $field ] );
+				if ( ! isset( $entrada[ $field ] ) || ! is_string( $entrada[ $field ] ) ) {
+					continue;
 				}
+
+				// Una credencial no es texto de pantalla: se recorta, se le quitan
+				// los caracteres de control y se descarta si trae espacios adentro
+				// (un token con un espacio es un pegote a medias). sanitize_text_field
+				// está pensado para texto visible y puede alterar un token válido.
+				$valor = trim( (string) preg_replace( '/[\x00-\x1F\x7F]/', '', $entrada[ $field ] ) );
+
+				if ( '' === $valor || false !== strpos( $valor, ' ' ) ) {
+					continue;
+				}
+
+				$campos[ $field ] = $valor;
 			}
 
 			$resultado = PaymentConfig::save( $id, $modo, $campos );
