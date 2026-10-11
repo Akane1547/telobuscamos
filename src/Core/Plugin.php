@@ -8,6 +8,7 @@
 namespace SimpleForm\Core;
 use SimpleForm\Admin\AdminPayments;
 use SimpleForm\Admin\AdminServices;
+use SimpleForm\Core\Cleanup;
 use SimpleForm\Database\Database;
 use SimpleForm\Rest\WebhookController;
 
@@ -68,5 +69,11 @@ class Plugin {
 
         // Esquema propio: comprueba la versión guardada y migra si hace falta.
         Database::maybe_upgrade();
+
+        // Limpieza programada: borradores abandonados y punteros de sesión
+        // vencidos. Se comprueba en cada carga porque una instalación que ya
+        // estaba activa no vuelve a pasar por la activación.
+        new Cleanup();
+        Cleanup::maybe_schedule();
     }
 }

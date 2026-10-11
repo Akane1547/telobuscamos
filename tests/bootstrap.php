@@ -21,6 +21,11 @@ define( 'SIMPLE_FORM_PATH', dirname( __DIR__ ) . '/' );
 // Constante de WordPress que usan los repositorios en $wpdb->get_row/get_results.
 define( 'ARRAY_A', 'ARRAY_A' );
 
+// Constantes de tiempo de WordPress, que usan Session, RateLimit y Cleanup.
+define( 'MINUTE_IN_SECONDS', 60 );
+define( 'HOUR_IN_SECONDS', 3600 );
+define( 'WEEK_IN_SECONDS', 604800 );
+
 // Una constante como las de wp-config.php, con valor de mentira, para poder
 // probar que manda sobre lo que se guarda cifrado en la base. Los campos cuya
 // ruta almacenada se prueba (webhook_secret) no tienen constante a propósito.
@@ -85,4 +90,20 @@ function current_time( $type = 'mysql', $gmt = 0 ) {
 
 function wp_json_encode( $data, $options = 0, $depth = 512 ) {
 	return json_encode( $data, $options, $depth );
+}
+
+function apply_filters( $hook, $value, ...$args ) {
+	return \SimpleForm\Tests\FakeWordPress::apply_filters( (string) $hook, $value, $args );
+}
+
+function set_transient( $key, $value, $expiration = 0 ) {
+	return \SimpleForm\Tests\FakeWordPress::set_transient( (string) $key, $value, (int) $expiration );
+}
+
+function get_transient( $key ) {
+	return \SimpleForm\Tests\FakeWordPress::get_transient( (string) $key );
+}
+
+function delete_transient( $key ) {
+	return \SimpleForm\Tests\FakeWordPress::delete_transient( (string) $key );
 }

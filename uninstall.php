@@ -38,14 +38,18 @@ delete_option( 'simple_form_db_version' );
 delete_option( 'simple_form_payment_methods' );
 delete_option( 'simple_form_payment_credentials' );
 
-// Punteros de sesión de invitados, con su timeout.
-$session_like = $wpdb->esc_like( '_transient_sf_client_session_' ) . '%';
-$timeout_like = $wpdb->esc_like( '_transient_timeout_sf_client_session_' ) . '%';
+// La limpieza programada muere con el plugin.
+wp_clear_scheduled_hook( 'simple_form_cleanup_event' );
 
-$wpdb->query(
-	$wpdb->prepare(
-		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-		$session_like,
-		$timeout_like
-	)
-);
+// Punteros de sesión de invitados y contadores del límite de peticiones, con
+// sus timeouts. Los prefijos son los mismos que usan Session y RateLimit: se
+// repiten acá porque WordPress carga este archivo sin el autoloader.
+foreach ( array( 'sf_client_session_', 'sf_rate_limit_' ) as $prefijo ) {
+	$wpdb->query(
+		$wpdb->prepare(
+			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+			$wpdb->esc_like( '_transient_' . $prefijo ) . '%',
+			$wpdb->esc_like( '_transient_timeout_' . $prefijo ) . '%'
+		)
+	);
+}

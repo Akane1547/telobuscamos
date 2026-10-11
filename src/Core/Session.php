@@ -106,6 +106,43 @@ class Session {
 	}
 
 	/**
+	 * Borra los punteros de sesión ya vencidos.
+	 *
+	 * WordPress ignora un transient vencido, pero sus dos filas (valor y
+	 * timeout) se quedan en wp_options. Esto las saca de a tandas, para no
+	 * barrer la tabla entera de una.
+	 *
+	 * @param int $limit Máximo de punteros a borrar en esta corrida.
+	 * @return int Punteros borrados.
+	 */
+	public static function delete_expired( int $limit = 200 ): int {
+		global $wpdb;
+
+		$timeout_like = $wpdb->esc_like( '_transient_timeout_' . self::TRANSIENT_PREFIX ) . '%';
+
+		$nombres = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s AND option_value < %d LIMIT %d",
+				$timeout_like,
+				time(),
+				$limit
+			)
+		);
+
+		$borrados = 0;
+
+		foreach ( (array) $nombres as $nombre ) {
+			$key = substr( (string) $nombre, strlen( '_transient_timeout_' ) );
+
+			if ( '' !== $key && delete_transient( $key ) ) {
+				$borrados++;
+			}
+		}
+
+		return $borrados;
+	}
+
+	/**
 	 * Sanitiza el id de sesión permitiendo únicamente caracteres alfanuméricos.
 	 *
 	 * @param string $session_id

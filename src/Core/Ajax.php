@@ -19,6 +19,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Ajax {
 
+	/**
+	 * Peticiones permitidas por minuto en los endpoints que escriben.
+	 */
+	const LIMIT_WRITES = 60;
+
+	/**
+	 * Peticiones permitidas por minuto en los endpoints de lectura.
+	 */
+	const LIMIT_READS = 120;
+
 	public function __construct() {
 		add_action( 'wp_ajax_simple_form_get_progress', array( $this, 'get_progress' ) );
 		add_action( 'wp_ajax_nopriv_simple_form_get_progress', array( $this, 'get_progress' ) );
@@ -169,10 +179,31 @@ class Ajax {
 	}
 
 	/**
+	 * Corta la petición si el cliente pasó el límite de esa acción.
+	 *
+	 * El nonce viaja con la página y no es autenticación, así que un invitado
+	 * puede llamar a estos endpoints todo lo que quiera: esto le pone techo.
+	 *
+	 * @param string $action Acción, sin el prefijo de WordPress.
+	 * @param int    $limit  Peticiones permitidas por minuto.
+	 */
+	private function guard_rate_limit( string $action, int $limit ): void {
+		if ( \SimpleForm\Security\RateLimit::check( $action, $limit ) ) {
+			return;
+		}
+
+		wp_send_json_error(
+			array( 'message' => __( 'Demasiadas peticiones seguidas. Esperá un momento y volvé a intentar.', 'simple-form' ) ),
+			429
+		);
+	}
+
+	/**
 	 * Obtiene el progreso leyendo el pedido persistido.
 	 */
 	public function get_progress(): void {
 		$this->verify_request_nonce();
+		$this->guard_rate_limit( 'get_progress', self::LIMIT_READS );
 
 		$session_id = $this->read_session_id();
 		$order      = $this->find_order_by_session( $session_id );
@@ -194,6 +225,7 @@ class Ajax {
 	 */
 	public function calculate_price(): void {
 		$this->verify_request_nonce();
+		$this->guard_rate_limit( 'calculate_price', self::LIMIT_READS );
 
 		$service_id = sanitize_text_field( wp_unslash( $_POST['service_id'] ?? '' ) );
 		$coords     = $this->read_coordinates();
@@ -229,6 +261,7 @@ class Ajax {
 	 */
 	public function get_coverage_area(): void {
 		$this->verify_request_nonce();
+		$this->guard_rate_limit( 'get_coverage_area', self::LIMIT_READS );
 
 		// Con serialize_precision=17 (lo que trae php-fpm en muchos hostings) cada
 		// coordenada se imprime con 17 dígitos y esta respuesta pasa de ~40 KB a
@@ -251,6 +284,7 @@ class Ajax {
 	 */
 	public function save_step1(): void {
 		$this->verify_request_nonce();
+		$this->guard_rate_limit( 'save_step1', self::LIMIT_WRITES );
 
 		$session_id = $this->read_session_id();
 
@@ -313,6 +347,7 @@ class Ajax {
 
 	public function save_step2(): void {
 		$this->verify_request_nonce();
+		$this->guard_rate_limit( 'save_step2', self::LIMIT_WRITES );
 
 		$session_id = $this->read_session_id();
 		$order      = $this->find_order_by_session( $session_id );
@@ -389,6 +424,7 @@ class Ajax {
 	 */
 	public function save_step3(): void {
 		$this->verify_request_nonce();
+		$this->guard_rate_limit( 'save_step3', self::LIMIT_WRITES );
 
 		$session_id = $this->read_session_id();
 		$order      = $this->find_order_by_session( $session_id );

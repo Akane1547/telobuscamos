@@ -7,6 +7,7 @@
 
 namespace SimpleForm\Activation;
 
+use SimpleForm\Core\Cleanup;
 use SimpleForm\Database\Database;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -27,6 +28,9 @@ final class Activate {
 
         self::check_requirements();
         self::create_tables();
+
+        // La limpieza programada: borradores abandonados y punteros vencidos.
+        Cleanup::maybe_schedule();
 
         // Refresca las reglas de rewrite de WP.
         flush_rewrite_rules();

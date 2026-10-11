@@ -7,6 +7,8 @@
 
 namespace SimpleForm\Activation;
 
+use SimpleForm\Core\Cleanup;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -16,10 +18,11 @@ final class Deactivate {
 	/**
 	 * Punto de entrada llamado por register_deactivation_hook().
 	 *
-	 * Sin tareas de limpieza por ahora: no hay cron ni esquema propio, y
-	 * los transients de sesión expiran solos. La limpieza de borradores
-	 * se agrega junto con su fase.
+	 * Se desengancha la limpieza programada. El esquema y los datos se quedan:
+	 * desactivar no es desinstalar. Los punteros de sesión vencidos expiran
+	 * solos, y los que ya vencieron los recoge la limpieza al reactivar.
 	 */
 	public static function deactivate(): void {
+		Cleanup::unschedule();
 	}
 }

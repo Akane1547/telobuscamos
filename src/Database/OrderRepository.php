@@ -105,6 +105,39 @@ final class OrderRepository {
 	}
 
 	/**
+	 * Marca como expirados los pedidos abandonados.
+	 *
+	 * Solo `draft` y `pending`: son los dos estados cuya transición a `expired`
+	 * permite la máquina de estados. Un `in_process` no se toca porque puede
+	 * estar esperando una captura, y un pedido pagado no se toca nunca.
+	 *
+	 * @param int $ttl Segundos de inactividad a partir de los cuales se expira.
+	 * @return int Filas marcadas.
+	 */
+	public static function expire_drafts( int $ttl ): int {
+		global $wpdb;
+
+		if ( $ttl <= 0 ) {
+			return 0;
+		}
+
+		$table = Database::table_name( Database::TABLE_ORDERS );
+
+		$filas = $wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$table} SET status = %s, updated_at = %s WHERE status IN ( %s, %s ) AND updated_at < %s",
+				OrderStatus::EXPIRED,
+				current_time( 'mysql', true ),
+				OrderStatus::DRAFT,
+				OrderStatus::PENDING,
+				gmdate( 'Y-m-d H:i:s', time() - $ttl )
+			)
+		);
+
+		return is_int( $filas ) ? $filas : 0;
+	}
+
+	/**
 	 * Actualiza columnas de un pedido y refresca updated_at.
 	 *
 	 * @param int   $order_id

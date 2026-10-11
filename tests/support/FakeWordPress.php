@@ -24,10 +24,18 @@ final class FakeWordPress {
 	/** @var string */
 	private static $referer = 'https://telobuscamos.local/mapa/';
 
+	/** @var array Transients en memoria, con su vencimiento. */
+	private static $transients = array();
+
+	/** @var array Filtros que registran las pruebas. */
+	private static $filters = array();
+
 	public static function reset(): void {
-		self::$options = array();
-		self::$home    = 'http://telobuscamos.local';
-		self::$salt    = 'salt-de-prueba-0123456789';
+		self::$options    = array();
+		self::$home       = 'http://telobuscamos.local';
+		self::$salt       = 'salt-de-prueba-0123456789';
+		self::$transients = array();
+		self::$filters    = array();
 		self::$referer = 'https://telobuscamos.local/mapa/';
 	}
 
@@ -78,6 +86,49 @@ final class FakeWordPress {
 	 */
 	public static function sanitize_key( string $key ): string {
 		return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', $key ) );
+	}
+
+	public static function set_filter( string $hook, callable $callback ): void {
+		self::$filters[ $hook ] = $callback;
+	}
+
+	public static function apply_filters( string $hook, $value, array $args = array() ) {
+		if ( ! isset( self::$filters[ $hook ] ) ) {
+			return $value;
+		}
+
+		return call_user_func( self::$filters[ $hook ], $value, ...$args );
+	}
+
+	public static function set_transient( string $key, $value, int $expiration = 0 ): void {
+		self::$transients[ $key ] = array(
+			'value'      => $value,
+			'expiration' => $expiration > 0 ? time() + $expiration : 0,
+		);
+	}
+
+	public static function get_transient( string $key ) {
+		if ( ! isset( self::$transients[ $key ] ) ) {
+			return false;
+		}
+
+		$row = self::$transients[ $key ];
+
+		if ( 0 < $row['expiration'] && $row['expiration'] < time() ) {
+			unset( self::$transients[ $key ] );
+
+			return false;
+		}
+
+		return $row['value'];
+	}
+
+	public static function delete_transient( string $key ): bool {
+		$existia = isset( self::$transients[ $key ] );
+
+		unset( self::$transients[ $key ] );
+
+		return $existia;
 	}
 
 	public static function set_referer( string $url ): void {
