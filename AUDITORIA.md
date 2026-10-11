@@ -91,12 +91,16 @@ como dependencia aceptada.
 
 **M-2 · No hay guard de estado en las escrituras de los pasos 1 y 2.** Es A-1, listado
 aparte porque el arreglo es una sola condición y conviene tratarlo como una unidad.
+*Resuelto:* con A-1: es el mismo arreglo en `Ajax.php`, no una tarea aparte.
 
 **M-3 · El secreto se escribe en un campo de texto visible.**
 `AdminPayments.php:276` y `:297` usan `type="text"` para el Access Token y la clave
 secreta: el valor queda a la vista al tipearlo y expuesto a autocompletado y a
 extensiones del navegador. *Arreglo:* `type="password"`, `autocomplete="new-password"`,
 `spellcheck="false"`.
+*Resuelto:* los dos campos son `type="password"` con `autocomplete="new-password"` y
+`spellcheck="false"`; la suite del admin sigue comprobando que la pantalla no imprime
+ningún valor.
 
 **M-4 · Guardar credenciales siempre se reporta como falta de HTTPS.**
 `handle_save_credentials()` redirige `error=https` pase lo que pase
