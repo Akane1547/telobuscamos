@@ -371,5 +371,33 @@
 		} );
 	}
 
+	/**
+	 * Dirección elegida en el buscador (geocode.js). Mueve el pin, el círculo
+	 * del radio y pide el precio: la ubicación la elige el cliente, pero el
+	 * precio lo sigue calculando el servidor.
+	 *
+	 * @param {CustomEvent} event
+	 */
+	function onPlaceSelected( event ) {
+		const { lat, lng } = event.detail;
+
+		if ( ! mapa || ! marker || ! isFinite( lat ) || ! isFinite( lng ) ) {
+			return;
+		}
+
+		const latlng = { lat, lng };
+
+		marker.setLatLng( latlng );
+		storePosition( latlng );
+
+		if ( radiusCircle ) {
+			radiusCircle.setLatLng( latlng );
+		}
+
+		mapa.setView( [ lat, lng ], 16 );
+		requestPriceDebounced();
+	}
+
 	document.addEventListener( SF.events.stepVisible, onStepVisible );
+	document.addEventListener( SF.events.placeSelected, onPlaceSelected );
 } )( window, document );

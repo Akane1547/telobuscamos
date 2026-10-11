@@ -140,6 +140,30 @@ class Shortcode {
 						</div>
 
 						<div class="pn-form__row">
+							<label for="pn-address" class="pn-form__label"><?php esc_html_e( '¿Dónde lo necesitas?', 'simple-form' ); ?></label>
+
+							<div class="pn-address">
+								<div class="pn-address__box">
+									<input
+										type="text"
+										id="pn-address"
+										class="pn-form__input"
+										placeholder="<?php echo esc_attr__( 'Calle y número, comuna', 'simple-form' ); ?>"
+										autocomplete="off"
+										role="combobox"
+										aria-expanded="false"
+										aria-autocomplete="list"
+										aria-controls="pn-address-list"
+									/>
+									<ul id="pn-address-list" class="pn-address__list" role="listbox" hidden></ul>
+								</div>
+								<span class="pn-address__status" role="status" aria-live="polite"></span>
+								<span class="pn-form__error" data-error-for="address"></span>
+								<input type="hidden" id="pn-address-value" name="address" value="" />
+							</div>
+						</div>
+
+						<div class="pn-form__row">
 							<label class="pn-form__label"><?php esc_html_e( 'Ubicación y radio de búsqueda', 'simple-form' ); ?></label>
 
 							<div id="map-plugin" class="map-plugin-contenedor"></div>

@@ -51,7 +51,11 @@ class Assets {
             'ui'        => array( 'simple-form-validator' ),
             'receipt'   => array( 'simple-form-ui' ),
             'map'       => array( 'simple-form-receipt' ),
-            'stepper'   => array( 'simple-form-map' ),
+            // geocode va después de map: publica sf:place-selected y map.js es
+            // quien lo escucha para mover el pin. stepper cierra la cadena y
+            // arrastra todo el resto.
+            'geocode'   => array( 'simple-form-map' ),
+            'stepper'   => array( 'simple-form-geocode' ),
         );
 
         foreach ( $modules as $name => $deps ) {
@@ -88,6 +92,7 @@ class Assets {
                     'saveStep3'       => 'simple_form_save_step3',
                     'calculatePrice'  => 'simple_form_calculate_price',
                     'getCoverageArea' => 'simple_form_get_coverage_area',
+                    'geocode'         => 'simple_form_geocode',
                 ),
                 // Punto de partida del pin (Santiago) y vista inicial antes de
                 // que llegue el contorno. El encuadre definitivo lo fija el
@@ -109,6 +114,10 @@ class Assets {
                 'i18n' => array(
                     'checking'     => __( 'Verificando el pago con Mercado Pago…', 'simple-form' ),
                     'stillPending' => __( 'Todavía no nos llegó la confirmación del pago. Podés recargar la página en un momento.', 'simple-form' ),
+                    'searching'    => __( 'Buscando direcciones…', 'simple-form' ),
+                    'searchMore'   => __( 'Escribí al menos 3 letras.', 'simple-form' ),
+                    'searchNoResults' => __( 'Sin resultados. Probá con calle y comuna, o tocá el mapa.', 'simple-form' ),
+                    'searchError'  => __( 'No pudimos buscar direcciones. Podés tocar el mapa.', 'simple-form' ),
                 ),
             )
         );

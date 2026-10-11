@@ -45,12 +45,17 @@
 			feedback: '.pn-form__feedback',
 			receiptBadge: '.pn-receipt__badge',
 			mapContainer: '#map-plugin',
+			addressInput: '#pn-address',
+			addressList: '#pn-address-list',
+			addressStatus: '.pn-address__status',
+			addressValue: '#pn-address-value',
 		},
 
 		// --- Nombres de eventos custom compartidos entre módulos ---
 		events: {
 			stepVisible: 'sf:step-visible', // detail: { step, wrapper }
 			priceUpdated: 'sf:price-updated', // detail: { wrapper, step2 }
+			placeSelected: 'sf:place-selected', // detail: { lat, lng, label } — geocode.js -> map.js
 		},
 
 		// Promesa cacheada para no inyectar Leaflet dos veces si el

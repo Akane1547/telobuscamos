@@ -816,6 +816,51 @@
 	font-family: inherit;
 }
 
+/* Buscador de direcciones (Paso 2) */
+.pn-address__box {
+	position: relative;
+}
+
+.pn-address__list {
+	position: absolute;
+	z-index: 1200; /* por encima de los controles de Leaflet */
+	top: 100%;
+	right: 0;
+	left: 0;
+	margin: 0.35rem 0 0;
+	padding: 0.3rem 0;
+	max-height: 16rem;
+	overflow-y: auto;
+	list-style: none;
+	background: var(--pn-bg);
+	border: 1px solid var(--pn-border);
+	border-radius: var(--pn-radius-sm);
+	box-shadow: var(--pn-shadow-md);
+}
+
+.pn-address__option {
+	padding: 0.6rem 0.9rem;
+	font-size: 0.9rem;
+	color: var(--pn-text);
+	cursor: pointer;
+}
+
+.pn-address__option:hover,
+.pn-address__option[aria-selected="true"] {
+	background: var(--pn-bg-soft);
+}
+
+.pn-address__status {
+	display: block;
+	margin-top: 0.4rem;
+	font-size: 0.8rem;
+	color: var(--pn-text-muted);
+}
+
+.pn-address__status:empty {
+	display: none;
+}
+
 /* Control de radio de búsqueda */
 .map-plugin__radio-control {
 	display: flex;

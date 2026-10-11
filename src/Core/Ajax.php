@@ -48,8 +48,8 @@ class Ajax {
 		add_action( 'wp_ajax_simple_form_get_coverage_area', array( $this, 'get_coverage_area' ) );
 		add_action( 'wp_ajax_nopriv_simple_form_get_coverage_area', array( $this, 'get_coverage_area' ) );
 
-
-
+		add_action( 'wp_ajax_simple_form_geocode', array( $this, 'geocode' ) );
+		add_action( 'wp_ajax_nopriv_simple_form_geocode', array( $this, 'geocode' ) );
 	}
 
 	/**
@@ -277,6 +277,27 @@ class Ajax {
 				'bounds'  => Coverage::bounds(),
 			)
 		);
+	}
+
+	/**
+	 * Busca direcciones de Chile para el buscador del Paso 2.
+	 *
+	 * Es una ayuda de interfaz: no toca el pedido, no calcula nada y no decide
+	 * la ubicación (el pin lo mueve el cliente). El navegador manda lo que se
+	 * escribió y recibe una lista corta; el filtro de Chile y la caché viven en
+	 * Geocoder, así que cambiar de proveedor no toca este endpoint ni el front.
+	 */
+	public function geocode(): void {
+		$this->verify_request_nonce();
+		$this->guard_rate_limit( 'geocode', self::LIMIT_READS );
+
+		$query = isset( $_POST['query'] ) ? sanitize_text_field( wp_unslash( $_POST['query'] ) ) : '';
+
+		if ( strlen( trim( $query ) ) < Geocoder::MIN_CHARS ) {
+			wp_send_json_error( array( 'message' => __( 'Escribí al menos 3 letras de la dirección.', 'simple-form' ) ), 422 );
+		}
+
+		wp_send_json_success( array( 'results' => ( new Geocoder() )->search( $query ) ) );
 	}
 
 	/**
