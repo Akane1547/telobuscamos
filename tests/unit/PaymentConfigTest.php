@@ -70,24 +70,24 @@ final class PaymentConfigTest extends TestCase {
 	public function test_produccion_por_http_no_se_guarda(): void {
 		FakeWordPress::set_home( 'http://telobuscamos.local' );
 
-		$this->assertFalse( PaymentConfig::save( 'mercado_pago', 'production', array() ) );
+		$this->assertSame( 'https', PaymentConfig::save( 'mercado_pago', 'production', array() ) );
 		$this->assertSame( 'sandbox', PaymentConfig::mode( 'mercado_pago' ) );
 	}
 
 	public function test_produccion_por_https_si_se_guarda(): void {
 		FakeWordPress::set_home( 'https://ejemplo.cl' );
 
-		$this->assertTrue( PaymentConfig::save( 'mercado_pago', 'production', array() ) );
+		$this->assertSame( '', PaymentConfig::save( 'mercado_pago', 'production', array() ) );
 		$this->assertSame( 'production', PaymentConfig::mode( 'mercado_pago' ) );
 	}
 
 	public function test_un_modo_inventado_se_normaliza_a_sandbox(): void {
-		$this->assertTrue( PaymentConfig::save( 'mercado_pago', 'cualquiera', array() ) );
+		$this->assertSame( '', PaymentConfig::save( 'mercado_pago', 'cualquiera', array() ) );
 		$this->assertSame( 'sandbox', PaymentConfig::mode( 'mercado_pago' ) );
 	}
 
 	public function test_una_pasarela_no_registrada_no_se_guarda(): void {
-		$this->assertFalse( PaymentConfig::save( 'paypal', 'sandbox', self::CAMPOS ) );
+		$this->assertSame( 'unknown', PaymentConfig::save( 'paypal', 'sandbox', self::CAMPOS ) );
 		$this->assertSame( '', PaymentConfig::credential( 'paypal', 'webhook_secret' ) );
 	}
 
@@ -127,7 +127,7 @@ final class PaymentConfigTest extends TestCase {
 	public function test_sin_cifrado_posible_no_guarda_nada(): void {
 		FakeWordPress::set_salt( '' );
 
-		$this->assertFalse( PaymentConfig::save( 'mercado_pago', 'sandbox', self::CAMPOS ) );
+		$this->assertSame( 'crypto', PaymentConfig::save( 'mercado_pago', 'sandbox', self::CAMPOS ) );
 		$this->assertNull( FakeWordPress::get_option( PaymentConfig::OPTION_CREDENTIALS, null ) );
 	}
 }

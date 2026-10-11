@@ -139,17 +139,20 @@ final class PaymentConfig {
 	 * @param string $gateway_id
 	 * @param string $mode
 	 * @param array  $plain_fields field => valor en claro (solo lo que se escribió).
-	 * @return bool False si no se guardó.
+	 * @return string Cadena vacía si se guardó. Si no, el motivo, que es la clave
+	 *                del aviso que muestra el panel: 'unknown' (la pasarela no
+	 *                está registrada), 'https' (en producción el sitio tiene que
+	 *                ser HTTPS) o 'crypto' (no hay cifrado disponible).
 	 */
-	public static function save( string $gateway_id, string $mode, array $plain_fields = array() ): bool {
+	public static function save( string $gateway_id, string $mode, array $plain_fields = array() ): string {
 		if ( ! Gateways::has( $gateway_id ) ) {
-			return false;
+			return 'unknown';
 		}
 
 		$mode = ( self::MODE_PRODUCTION === $mode ) ? self::MODE_PRODUCTION : self::MODE_SANDBOX;
 
 		if ( self::MODE_PRODUCTION === $mode && ! self::site_is_https() ) {
-			return false;
+			return 'https';
 		}
 
 		$all = get_option( self::OPTION_CREDENTIALS, array() );
@@ -170,7 +173,7 @@ final class PaymentConfig {
 			// guarda nada, ni el modo, antes que dejar un valor en claro o dar por
 			// guardado algo que no lo está.
 			if ( '' === $cipher ) {
-				return false;
+				return 'crypto';
 			}
 
 			$set[ $field ] = $cipher;
@@ -180,7 +183,7 @@ final class PaymentConfig {
 
 		update_option( self::OPTION_CREDENTIALS, $all );
 
-		return true;
+		return '';
 	}
 
 	/**

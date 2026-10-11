@@ -104,6 +104,9 @@ extensiones del navegador. *Arreglo:* `type="password"`, `autocomplete="new-pass
 motivos distintos (HTTPS, cifrado no disponible, pasarela desconocida). El admin ve un
 diagnóstico equivocado. *Arreglo:* que `save()` devuelva el motivo y la pantalla lo
 muestre.
+*Resuelto:* `PaymentConfig::save()` devuelve el motivo (`'https'`, `'crypto'`, `'unknown'` o `''`)
+y el panel lo usa tal cual: ya tenía un aviso por cada caso, pero el productor mandaba `https`
+siempre. Los tests unitarios fijan los tres motivos.
 
 **M-5 · El teléfono no se valida en el servidor.**
 `save_step1` solo comprueba que no venga vacío (`Ajax.php:295`). El cliente sí aplica
@@ -178,8 +181,8 @@ mensajes de `validator.js` a `i18n` y usar la misma convención.
    reproduce la vulnerabilidad medida y cubre el caso positivo.
 2. ✅ **A-2** — hecho: el mapa respeta la ubicación guardada; verificado en el navegador
    contra el mismo caso que lo destapó.
-3. **M-3 y M-4** (credenciales: campo oculto y motivo real del fallo) — son las dos
-   cosas que hoy pueden hacer perder tiempo en el panel.
+3. ✅ **M-3 y M-4** — hecho: campos `type=password` con `autocomplete=new-password`, y el panel
+   dice el motivo real del fallo (antes culpaba siempre al HTTPS).
 4. **M-5** (teléfono en servidor) y **B-8** (códigos HTTP) — cierran la validación.
 5. **M-6** (guion reproducible de los flujos del front) — antes de tocar más el JS.
 6. **M-1** (tiles) — decisión de producto, no de código: hay que elegir proveedor o

@@ -294,7 +294,7 @@ class AdminPayments {
 			: __( 'sin configurar', 'simple-form' );
 
 		// type=password: la credencial no se lee mientras se escribe ni queda
-		// expuesta al autocompletado o a una extension del navegador. El
+		// expuesta al autocompletado o a una extensión del navegador. El
 		// navegador tampoco la ofrece guardar.
 		printf(
 			'<input type="password" class="regular-text" name="%s" value="" autocomplete="new-password" spellcheck="false" placeholder="%s" />',
@@ -444,9 +444,13 @@ class AdminPayments {
 				}
 			}
 
-			if ( ! PaymentConfig::save( $id, $modo, $campos ) ) {
-				// Producción sin HTTPS, o nada que cifrar: no se guardó nada.
-				$this->redirect( '', 'https' );
+			$resultado = PaymentConfig::save( $id, $modo, $campos );
+
+			if ( '' !== $resultado ) {
+				// El motivo real viaja en la URL y la pantalla ya tiene un aviso
+				// por cada uno. Antes se reportaba siempre 'https', aunque el
+				// fallo hubiera sido el cifrado o una pasarela desconocida.
+				$this->redirect( '', $resultado );
 			}
 		}
 
