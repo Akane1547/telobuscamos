@@ -85,16 +85,13 @@
    ========================================================================== */
 
 .pn-form-layout {
-	display: grid;
-	grid-template-columns: 1fr 300px;
-	gap: 28px;
-	align-items: start;
+	display: block;
 }
 
-@media (max-width: 780px) {
-	.pn-form-layout {
-		grid-template-columns: 1fr;
-	}
+.pn-form-layout .pn-form {
+	width: 100%;
+	max-width: 780px;
+	margin: 0 auto;
 }
 
 .pn-form {
@@ -565,17 +562,19 @@
 .pn-summary {
 	background: linear-gradient(160deg, var(--pn-bg-soft) 0%, #fff 100%);
 	border: 1px solid var(--pn-border);
-	border-radius: var(--pn-radius);
-	padding: 24px 22px;
-	position: sticky;
-	top: 20px;
-	box-shadow: var(--pn-shadow-md);
+	border-radius: var(--pn-radius-sm);
+	padding: 16px 20px 18px;
+	margin: 0 0 22px;
+	box-shadow: var(--pn-shadow-sm);
 }
 
 .pn-summary__title {
-	margin: 0 0 16px;
-	font-size: 1rem;
+	margin: 0 0 12px;
+	font-size: 0.8rem;
 	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--pn-text-muted);
 	display: flex;
 	align-items: center;
 	gap: 8px;
@@ -591,32 +590,37 @@
 }
 
 .pn-summary__list {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 4px 18px;
 	margin: 0;
 }
 
 .pn-summary__row {
 	display: flex;
-	justify-content: space-between;
-	gap: 8px;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 2px;
 	font-size: 0.85rem;
-	padding: 10px 0;
-	border-bottom: 1px solid var(--pn-border);
+	padding: 0;
+	border-bottom: none;
 }
 
 .pn-summary__row dt {
 	color: var(--pn-text-muted);
+	font-size: 0.75rem;
 }
 
 .pn-summary__row dd {
 	margin: 0;
 	font-weight: 600;
-	text-align: right;
+	text-align: left;
+	overflow-wrap: anywhere;
 }
 
 .pn-summary__row--total {
-	border-bottom: none;
-	padding-top: 14px;
-	align-items: baseline;
+	padding-top: 0;
+	align-items: flex-start;
 }
 
 .pn-summary__row--total dt {
@@ -791,7 +795,12 @@
 	}
 
 	.pn-summary {
-		position: static;
+		padding: 14px 16px;
+	}
+
+	.pn-summary__list {
+		grid-template-columns: 1fr;
+		gap: 10px;
 	}
 }
 
@@ -801,13 +810,14 @@
 
 .map-plugin-contenedor {
 	width: 100%;
+	max-width: 100%;
 	height: 420px; /* altura obligatoria para Leaflet */
 	border-radius: var(--pn-radius-sm);
 	overflow: hidden;
 	box-shadow: var(--pn-shadow-md);
 	border: 1px solid var(--pn-border);
 	z-index: 1;
-	margin-bottom: 14px;
+	margin: 0 auto 14px;
 }
 
 .map-plugin-contenedor .leaflet-container {

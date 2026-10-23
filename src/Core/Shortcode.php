@@ -121,6 +121,15 @@ class Shortcode {
 
 					<!-- PASO 2: Servicio y ubicación -->
 					<section class="pn-step" data-step-panel="2" hidden>
+						<aside class="pn-summary">
+							<h4 class="pn-summary__title"><?php esc_html_e( 'Resumen', 'simple-form' ); ?></h4>
+							<dl class="pn-summary__list">
+								<div class="pn-summary__row"><dt><?php esc_html_e( 'Servicio', 'simple-form' ); ?></dt><dd id="pn-summary-service">—</dd></div>
+								<div class="pn-summary__row"><dt><?php esc_html_e( 'Radio', 'simple-form' ); ?></dt><dd id="pn-summary-radius">—</dd></div>
+								<div class="pn-summary__row pn-summary__row--total"><dt><?php esc_html_e( 'Precio estimado', 'simple-form' ); ?></dt><dd id="pn-summary-price">$0</dd></div>
+							</dl>
+						</aside>
+
 						<div class="pn-form__row">
 							<label for="pn-service-type" class="pn-form__label"><?php esc_html_e( 'Tipo de servicio', 'simple-form' ); ?></label>
 							<select id="pn-service-type" name="service_id" class="pn-form__input pn-form__select" required>
@@ -251,15 +260,6 @@ class Shortcode {
 
 					<div class="pn-form__feedback" role="status" aria-live="polite"></div>
 				</form>
-
-				<aside class="pn-summary">
-					<h4 class="pn-summary__title"><?php esc_html_e( 'Resumen', 'simple-form' ); ?></h4>
-					<dl class="pn-summary__list">
-						<div class="pn-summary__row"><dt><?php esc_html_e( 'Servicio', 'simple-form' ); ?></dt><dd id="pn-summary-service">—</dd></div>
-						<div class="pn-summary__row"><dt><?php esc_html_e( 'Radio', 'simple-form' ); ?></dt><dd id="pn-summary-radius">—</dd></div>
-						<div class="pn-summary__row pn-summary__row--total"><dt><?php esc_html_e( 'Precio estimado', 'simple-form' ); ?></dt><dd id="pn-summary-price">$0</dd></div>
-					</dl>
-				</aside>
 			</div>
 		</div>
 		<?php
