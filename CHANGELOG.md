@@ -1,5 +1,10 @@
 # Cambios
 
+## 2e82e96 - Fix: layout centrado del formulario y resumen dentro del paso 2
+
+- **src/Core/Shortcode.php**: el `aside.pn-summary` deja el layout lateral y pasa al inicio del panel del paso 2. El resumen solo existe en "Servicio y ubicación"; en los pasos 1, 3 y 4 ya no se pinta.
+- **assets/css/form.css**: `.pn-form-layout` pasa de grid `1fr 300px` a una columna; `.pn-form` queda centrado con `max-width: 780px`. El resumen se convierte en una tarjeta horizontal de tres columnas (servicio, radio, precio) arriba del paso 2, y el mapa conserva su altura de 420 px ocupando el ancho del recuadro (`margin: 0 auto`). En móvil el resumen pasa a una columna. Sin cambios de paleta ni tipografía.
+
 ## 4379571 - Fix: el botón Siguiente dejaba de responder tras retroceder, y el paso a mostrar deja de saltarse pasos
 
 - **assets/js/ui.js**: `setLoading( wrapper, false )` limpia ahora **todos** los botones de navegación, no solo el activo. `goNext` cambia de paso (`renderCurrentStep`) antes del `finally`, así que al limpiar el botón que se había deshabilitado ya no era el activo —o no había ninguno visible, como en la confirmación—: quedaba `disabled` y con `is-loading` para siempre. Efecto visible: al retroceder desde el paso 3 (o el 1) el "Siguiente" no respondía a ningún clic y no se podía volver a avanzar.
