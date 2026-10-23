@@ -1,5 +1,10 @@
 # Cambios
 
+## 8d30dbb - Fix: endurecimiento del sitio (etapa fix)
+
+- **deploy/mu-plugins/sf-hardening.php** (nuevo): bloquea XML-RPC antes de procesar la petición (403), retira `/wp/v2/users` a visitantes y desactiva el sitemap de usuarios, redirige `/author/…` a la portada, añade `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` y `Permissions-Policy` (HSTS solo sobre HTTPS), deja CORS únicamente para el origen propio y elimina `X-Powered-By` y el `generator`. Se instala copiándolo a `wp-content/mu-plugins/`.
+- **FIX.md** (nuevo): estado de los 16 hallazgos de la auditoría, lo parcheado y lo que queda en el hosting (actualizaciones de núcleo y plugins, nginx, wp-cron, SameSite).
+
 ## 2e82e96 - Fix: layout centrado del formulario y resumen dentro del paso 2
 
 - **src/Core/Shortcode.php**: el `aside.pn-summary` deja el layout lateral y pasa al inicio del panel del paso 2. El resumen solo existe en "Servicio y ubicación"; en los pasos 1, 3 y 4 ya no se pinta.
