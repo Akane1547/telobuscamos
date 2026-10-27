@@ -63,10 +63,6 @@ final class Cleanup {
 		$pedidos  = OrderRepository::expire_drafts( self::DRAFT_TTL );
 		$punteros = Session::delete_expired();
 
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				sprintf( 'SimpleForm limpieza: %d pedidos expirados, %d punteros borrados', $pedidos, $punteros )
-			);
-		}
+		Logger::log( 'cleanup', sprintf( '%d pedidos expirados, %d punteros borrados', $pedidos, $punteros ) );
 	}
 }

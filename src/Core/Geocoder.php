@@ -249,8 +249,6 @@ class Geocoder {
 	 * @param string $message
 	 */
 	private function log( string $message ): void {
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( '[simple-form] geocoder: ' . $message ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		}
+		Logger::log( 'geocoder', $message );
 	}
 }

@@ -25,6 +25,8 @@
 
 namespace SimpleForm\Payments;
 
+use SimpleForm\Core\Logger;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -269,8 +271,6 @@ final class MercadoPagoGateway implements Gateway {
 	 * Log de diagnóstico. Nunca escribe credenciales ni datos personales.
 	 */
 	private function log( string $message ): void {
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'SimpleForm MercadoPago: ' . $message ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		}
+		Logger::log( 'mercado_pago', $message );
 	}
 }
