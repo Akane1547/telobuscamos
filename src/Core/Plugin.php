@@ -6,6 +6,7 @@
  */
 
 namespace SimpleForm\Core;
+use SimpleForm\Admin\AdminOrders;
 use SimpleForm\Admin\AdminPayments;
 use SimpleForm\Admin\AdminServices;
 use SimpleForm\Core\Cleanup;
@@ -56,6 +57,7 @@ class Plugin {
         if ( is_admin() ) {
             new AdminServices();
             new AdminPayments();
+            new AdminOrders();
         }
 
         // Ruta que reciben las notificaciones de Mercado Pago. Va en rest_api_init
