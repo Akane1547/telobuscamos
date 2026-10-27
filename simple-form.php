@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Simple Form
  * Description: Formulario de pago simple, visual, con shortcode. Al desinstalarlo borra sus propias tablas de pedidos y eventos de pago.
- * Version:     1.0.0
+ * Version:     1.1.0
  * Author:      BrunoPe
  * License:     GPL v2 or later
  * Text Domain: simple-form

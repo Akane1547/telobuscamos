@@ -17,6 +17,8 @@ require ( '' !== $sf_site_root ? rtrim( $sf_site_root, '/' ) : dirname( __DIR__,
 
 use SimpleForm\Account\Customer;
 use SimpleForm\Account\Pages;
+use SimpleForm\Database\Database;
+use SimpleForm\Database\OrderRepository;
 
 $sf_fallos = 0;
 
@@ -152,6 +154,53 @@ if ( null !== $sf_perfil ) {
 	$sf_perfil_url = (string) get_permalink( $sf_perfil );
 	check( 'la URL del perfil es la de la página', Pages::profile_url(), $sf_perfil_url );
 }
+
+// --- Pedido ligado a la cuenta (souls.md §37) --------------------------------
+
+wp_set_current_user( $sf_id );
+
+$sf_draft = OrderRepository::create_draft(
+	array(
+		'name'        => 'Cliente Integración',
+		'email'       => $sf_email,
+		'phone'       => '911112222',
+		'description' => 'prueba de integración de cuenta',
+	)
+);
+$sf_fila = OrderRepository::find_by_draft_id( $sf_draft );
+
+check( 'el pedido se creó', null !== $sf_fila, true );
+check( 'el pedido guarda la cuenta que lo hizo', null !== $sf_fila ? (int) $sf_fila['user_id'] : -1, $sf_id );
+
+// Un invitado sigue pudiendo pedir sin cuenta: queda en 0, no en NULL.
+wp_set_current_user( 0 );
+
+$sf_draft_invitado = OrderRepository::create_draft(
+	array(
+		'name'        => 'Invitado Integración',
+		'email'       => 'qa-invitado-' . wp_rand( 1000, 9999 ) . '@example.com',
+		'phone'       => '911112223',
+		'description' => 'prueba de invitado',
+	)
+);
+$sf_fila_invitado = OrderRepository::find_by_draft_id( $sf_draft_invitado );
+
+check( 'el pedido de un invitado no tiene cuenta', null !== $sf_fila_invitado ? (int) $sf_fila_invitado['user_id'] : -1, 0 );
+
+// Los dos pedidos de prueba no se quedan en el sitio.
+if ( null !== $sf_fila ) {
+	$wpdb->delete( Database::table_name( Database::TABLE_ORDERS ), array( 'id' => (int) $sf_fila['id'] ) );
+}
+
+if ( null !== $sf_fila_invitado ) {
+	$wpdb->delete( Database::table_name( Database::TABLE_ORDERS ), array( 'id' => (int) $sf_fila_invitado['id'] ) );
+}
+
+check(
+	'los pedidos de prueba se borraron',
+	(int) $wpdb->get_var( "SELECT COUNT(*) FROM " . Database::table_name( Database::TABLE_ORDERS ) . " WHERE description LIKE 'prueba de %cuenta%' OR description = 'prueba de invitado'" ),
+	0
+);
 
 // --- Limpieza ---------------------------------------------------------------
 

@@ -4,7 +4,7 @@ Tags: formulario, pago, mercadopago, servicios, mapa
 Requires at least: 6.0
 Requires PHP: 7.4
 Tested up to: 6.7
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,12 @@ No. Cada pedido guarda un snapshot de la etiqueta, el precio base y el precio po
 Porque todavía no se configuró ninguno en *Pedidos → Pagos*. Hasta que no haya un medio habilitado, el formulario no ofrece ninguno.
 
 == Changelog ==
+
+= 1.1.0 =
+* Cuenta del cliente: /iniciar-sesion (login y registro en la misma página), /perfil de solo lectura, cierre de sesión con WordPress y navegación que cambia "Iniciar sesión" por "Perfil". El nombre, el correo y el teléfono quedan en la cuenta de WordPress (el teléfono en la meta `simple_form_phone`).
+* El formulario de pedido se abre con los datos del cliente autenticado; el invitado lo sigue usando igual.
+* Cada pedido guarda el `user_id` de la cuenta que lo hizo, y la pantalla de pedidos lo muestra.
+* Pruebas de seguridad del sistema de cuentas (`tests/security/`, 152 pruebas) y endurecimiento: el cliente no entra al escritorio de WordPress y la respuesta de un correo que no existe ya no se distingue de la de uno que sí.
 
 = 1.0.0 =
 * Versión inicial: formulario de 4 pasos, cobertura de Chile, radio de búsqueda, pago con Mercado Pago Checkout Pro, webhook con firma e idempotencia, pantalla de pedidos, correos transaccionales y canal de log propio.

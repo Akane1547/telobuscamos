@@ -997,6 +997,15 @@ try {
 	grupo( '48.18 Manipulación de simple-form' );
 
 	reset_limite( 'save_step1' );
+
+	// La sesión de este grupo tiene que ser la de A: así el user_id que se cuela
+	// en el POST (el de B) difiere de quien está autenticado y la prueba dice
+	// algo. Con la sesión de B, el servidor guardaría B por las dos vías.
+	$jar_a_form = $SF_TMP . '/sf' . $sf_rand . '-a-form.txt';
+	reset_limite( 'account_login' );
+	login( $jar_a_form, $SF_A_MAIL, $SF_A_PASS );
+	$jar = $jar_a_form;
+
 	$r = http( 'GET', '/mapa/', null, $jar );
 	$n = preg_match( '/"nonce":"([^"]+)"/', $r['body'], $m ) ? $m[1] : '';
 	check( 'el formulario publica su nonce', '' !== $n, true );
@@ -1011,13 +1020,24 @@ try {
 			'name'     => 'Nombre Inyectado',
 			'email'    => 'sec-inyectado@example.com',
 			'phone'    => '900000001',
-			'user_id'  => (string) $SF_A_ID,
+			// El ataque: el cliente dice ser otra cuenta.
+			'user_id'  => (string) $SF_B_ID,
 			'description' => 'prueba',
 		),
 		$jar
 	);
 	$json = json_decode( $r['body'], true );
 	check( 'el pedido con datos cambiados se acepta (es un snapshot del pedido)', isset( $json['success'] ) && true === $json['success'], true );
+
+	// El vínculo con la cuenta lo pone el servidor: el user_id del POST se ignora.
+	$fila = $GLOBALS['wpdb']->get_row(
+		$GLOBALS['wpdb']->prepare(
+			'SELECT id, user_id FROM ' . $GLOBALS['wpdb']->prefix . 'sf_orders WHERE email = %s ORDER BY id DESC LIMIT 1',
+			'sec-inyectado@example.com'
+		),
+		ARRAY_A
+	);
+	check( 'el pedido quedó ligado a la cuenta autenticada, no a la enviada', null !== $fila ? (int) $fila['user_id'] : -1, $SF_A_ID );
 
 	check( 'pero la cuenta de A no cambió de nombre', Customer::name( $SF_A_ID ), $SF_A_NAME );
 	check( 'ni de correo', Customer::email( $SF_A_ID ), $SF_A_MAIL );

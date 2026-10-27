@@ -1593,6 +1593,8 @@ si el flujo concreto permite utilizar esa respuesta para enumerar cuentas.
 
 La decisión final debe respetar el comportamiento definido para el sitio.
 
+**Decisión del sitio (implementada en 1.1.0):** el login no revela nada —mismo mensaje, mismo código y mismo cuerpo para correo existente e inexistente—, pero el registro **sí** dice "Ya existe una cuenta con este correo". La alternativa no reveladora exige confirmar el correo antes de poder entrar (doble opt-in), y eso contradice la decisión de producto de dejar al cliente con la sesión abierta y su perfil cargado al registrarse. Se acepta el riesgo, medido y acotado: 5 registros por minuto y por IP (`RateLimit`), y cada intento cuenta para el mismo contador que los registros válidos. Pruebas: `tests/security/account-security.php` compara las dos respuestas del login (mensaje, código y cuerpo normalizado) y verifica el mensaje del registro.
+
 ---
 
 ### 48.3 Manipulación de user_id
@@ -1810,6 +1812,10 @@ El payload permanece neutralizado después de ser almacenado.
 
 ---
 
+**Estado en 1.1.0:** `sanitize_text_field()` descarta las etiquetas antes de guardar, así que un payload que sea solo una etiqueta deja el nombre vacío y el registro se rechaza ("Escribe tu nombre."); lo que sobrevive (comillas, `>`) se guarda sin `<>` y se escapa al imprimirse en `/perfil` y en el atributo `value` del prellenado. Probado con `<script>`, `<img onerror>`, `<svg onload>` y `">`, cerrando sesión y volviendo a entrar.
+
+---
+
 ### 48.10 Inyección SQL
 
 Si existe cualquier endpoint que consulte datos mediante SQL:
@@ -1956,6 +1962,8 @@ protección equivalente
 ```
 
 Si todavía no existe protección contra fuerza bruta, documentarlo como pendiente y no afirmar que está protegido.
+
+**Estado en 1.1.0:** hay límite por contador, no bloqueo de cuenta ni retardo progresivo. `Security\RateLimit` permite 10 intentos de login y 5 registros por minuto, contados por **acción + IP de origen** (`REMOTE_ADDR`). Mientras dura la ventana, la contraseña correcta también queda frenada; el contador se reinicia solo al vencer el minuto. Límites que hay que conocer: detrás de un proxy inverso `REMOTE_ADDR` es la IP del proxy (toda la tienda comparte contador), y el sitio ofrece `simple_form_client_ip` para aportar la IP real; no se lee `X-Forwarded-For` por defecto porque lo puede inventar cualquiera. El límite no se probó desde varias IPs simultáneas (haría falta un proxy): sí se probó que 15 intentos seguidos bloquean y que el bloqueo frena también la contraseña buena.
 
 ---
 

@@ -187,6 +187,7 @@ final class AdminOrders {
 
 		echo '<h2>' . esc_html__( 'Cliente', 'simple-form' ) . '</h2>';
 		echo '<table class="form-table" role="presentation"><tbody>';
+		$this->row( __( 'Cuenta', 'simple-form' ), self::account_label( (int) $order['user_id'] ) );
 		$this->row( __( 'Nombre', 'simple-form' ), (string) $order['full_name'] );
 		$this->row( __( 'Correo', 'simple-form' ), (string) $order['email'] );
 		$this->row( __( 'Teléfono', 'simple-form' ), (string) $order['phone'] );
@@ -256,6 +257,31 @@ final class AdminOrders {
 	 * @param string      $label
 	 * @param string|null $value
 	 */
+	/**
+	 * Cuenta dueña del pedido, para no confundirla con el snapshot de contacto.
+	 *
+	 * El pedido guarda a quién se le cobró (nombre, correo, teléfono) y, aparte,
+	 * el user_id de quien lo hizo con sesión. Un invitado queda en 0.
+	 *
+	 * @param int $user_id Cuenta del pedido.
+	 * @return string
+	 */
+	private static function account_label( int $user_id ): string {
+		if ( $user_id <= 0 ) {
+			return __( 'Invitado (sin cuenta)', 'simple-form' );
+		}
+
+		$user = get_userdata( $user_id );
+
+		if ( false === $user ) {
+			/* translators: %d: id de la cuenta. */
+			return sprintf( __( 'Cuenta #%d (ya no existe)', 'simple-form' ), $user_id );
+		}
+
+		/* translators: 1: id de la cuenta, 2: correo. */
+		return sprintf( __( 'Cuenta #%1$d — %2$s', 'simple-form' ), $user_id, (string) $user->user_email );
+	}
+
 	private function row( string $label, ?string $value ): void {
 		printf(
 			'<tr><th scope="row">%s</th><td>%s</td></tr>',

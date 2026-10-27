@@ -25,7 +25,7 @@ final class Database {
 	/**
 	 * Versión del esquema. Subir al cambiar cualquier tabla.
 	 */
-	const DB_VERSION = 2;
+	const DB_VERSION = 3;
 
 	const TABLE_ORDERS         = 'sf_orders';
 	const TABLE_PAYMENT_EVENTS = 'sf_payment_events';
@@ -65,6 +65,7 @@ final class Database {
 			"CREATE TABLE {$orders} (
 				id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 				draft_id VARCHAR(64) NOT NULL,
+				user_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
 				full_name VARCHAR(191) NOT NULL DEFAULT '',
 				email VARCHAR(191) NOT NULL DEFAULT '',
 				phone VARCHAR(32) NOT NULL DEFAULT '',
@@ -87,6 +88,7 @@ final class Database {
 				PRIMARY KEY  (id),
 				UNIQUE KEY draft_id (draft_id),
 				KEY status (status),
+				KEY user_id (user_id),
 				KEY external_payment_id (external_payment_id)
 			) {$charset};",
 			"CREATE TABLE {$payment_events} (

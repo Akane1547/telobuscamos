@@ -25,6 +25,10 @@ final class OrderRepository {
 	 * Nace en current_step 2 a propósito: solo se llega aquí después de que
 	 * el paso 1 pasó la validación del servidor.
 	 *
+	 * La cuenta dueña sale de get_current_user_id(), nunca de la petición: un
+	 * invitado queda en 0. Los datos de contacto siguen siendo el snapshot del
+	 * pedido; el user_id es el vínculo con la cuenta (souls.md §37).
+	 *
 	 * @param array $customer name, email, phone, description.
 	 * @return string draft_id, o '' si la inserción falló.
 	 */
@@ -38,6 +42,7 @@ final class OrderRepository {
 			Database::table_name( Database::TABLE_ORDERS ),
 			array(
 				'draft_id'     => $draft_id,
+				'user_id'      => max( 0, (int) get_current_user_id() ),
 				'full_name'    => (string) $customer['name'],
 				'email'        => (string) $customer['email'],
 				'phone'        => (string) $customer['phone'],
@@ -47,7 +52,7 @@ final class OrderRepository {
 				'created_at'   => $now,
 				'updated_at'   => $now,
 			),
-			array( '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' )
+			array( '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' )
 		);
 
 		if ( false === $inserted ) {
