@@ -1,5 +1,20 @@
 # Cambios
 
+## d26c12e - Feat: cuenta del cliente (iniciar sesion, registro y perfil)
+
+- **src/Account/Phone.php** (nuevo): el formato del celular chileno en un solo lugar — nueve dígitos internos, `+56 9 1234 5678` al mostrar. `Ajax::normalize_phone()` pasa a delegar acá, así que el registro y el pedido no pueden divergir.
+- **src/Account/Customer.php** (nuevo): los datos del cliente salen de la cuenta de WordPress. Correo de `user_email`, nombre de `first_name` y solo el teléfono en una clave propia de user meta (`simple_form_phone`). Sin tabla ni copia paralela.
+- **src/Account/Auth.php** (nuevo): inicio de sesión con `wp_signon()` y registro con `wp_insert_user()`, con nonce, límite de intentos y contraseña mínima de 8. Quien se registra queda con la sesión abierta y va a `/perfil`. Los errores de credenciales son genéricos: no enumeran cuentas. Los campos van con prefijo `sf_` porque `name` es query var pública y WordPress la toma del `$_POST` en `parse_request()`, convirtiendo el envío en una búsqueda por slug (404 antes de leer el formulario).
+- **src/Account/Pages.php** (nuevo): `/iniciar-sesion` y `/perfil` usan plantillas del plugin y conservan cabecera, pie y tipografía del tema; el enlace "Iniciar sesion" del menú pasa a "Perfil" según `is_user_logged_in()`; la barra de WordPress se oculta al cliente.
+- **src/Activation/AccountPages.php** (nuevo): crea la página `/perfil` una sola vez, también en instalaciones que ya estaban activas. El alta va en `wp_loaded`: en `plugins_loaded` todavía no existe `$wp_rewrite` y `wp_insert_post()` muere al calcular el permalink.
+- **src/Core/Plugin.php**: instancia el módulo de cuenta solo en el front y agenda el alta de la página.
+- **src/Core/Shortcode.php**: el formulario se pinta con nombre, correo y teléfono del cliente autenticado, leídos en el servidor; el invitado no recibe datos prellenados.
+- **templates/account-login.php** y **templates/account-profile.php** (nuevos): formulario centrado sobre `abstract-luxury` con overlay CSS, registro en la misma página (`?form=registro`, sin JavaScript) y perfil de solo lectura con cierre de sesión por `wp_logout_url()`.
+- **assets/css/account.css** y **assets/img/abstract-luxury.jpg** (nuevos): estilos propios (todo bajo `sf-account`/`sf-profile`, sin tocar el CSS global) sobre la paleta del tema, y el asset guardado dentro del plugin. La textura de 8000 px se redujo a 2000 px para no bajar 2,6 MB al cliente; el fade es CSS.
+- **tests/unit/PhoneTest.php** (nuevo): normalización de las formas que escribe el cliente, rechazo de lo que no es celular chileno y los dos formatos de salida.
+- **tests/integration/test-account.php** (nuevo): una sola clave de teléfono, datos desde la cuenta, `save()` que no pisa el teléfono bueno con uno inválido, prellenado del formulario con y sin sesión (soltando el cerrojo de un formulario por proceso) y el cambio del enlace del menú. Crea su usuario y lo borra al final.
+- **tests/integration/test-admin-screen.php**: una constante definida y vacía no es una fuente de credenciales; la suite ya no la exige como `constant`.
+
 ## 3ffa23d - Feat: empaquetado (readme.txt y .distignore)
 
 - **readme.txt** (nuevo): ficha del plugin en formato de WordPress.org — descripción de los 4 pasos, la cobertura, el pago con Mercado Pago, instalación, preguntas frecuentes y changelog. Incluye el aviso de que desinstalar borra las tablas propias. `Stable tag: 1.0.0`, coherente con la cabecera.
