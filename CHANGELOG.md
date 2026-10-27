@@ -1,5 +1,11 @@
 # Cambios
 
+## 9c21c71 - Feat: canal de log propio, apagado por defecto
+
+- **src/Core/Logger.php** (nuevo): un solo punto para los avisos de diagnóstico. Apagado por defecto; se enciende con el filtro `simple_form_logging_enabled` o la constante `SIMPLE_FORM_LOGGING` (que manda sobre el filtro). Escribe con el prefijo `[simple-form][canal]` y nunca credenciales ni datos personales.
+- **src/Payments/MercadoPagoGateway.php**, **src/Core/Geocoder.php** y **src/Core/Cleanup.php**: los tres `error_log` pasan por `Logger::log()` con su canal (`mercado_pago`, `geocoder`, `cleanup`); desaparecen los prefijos ad-hoc y la dependencia de `WP_DEBUG`.
+- **tests/unit/LoggerTest.php** (nuevo): apagado por defecto (no escribe), encendido por filtro (escribe con el canal) y filtro en falso (sigue apagado), leyendo el log de errores redirigido a un archivo temporal.
+
 ## 3f15478 - Feat: correos transaccionales (aprobado y rechazo)
 
 - **src/Mail/Mailer.php** (nuevo): único sitio que envía correos. Se dispara desde `PaymentProcessor` solo cuando una transición cambia de verdad el estado (un reintento del webhook no repite el correo). Un `approved` avisa al comprador (resumen: servicio, radio legible, total CLP entero y fecha) y al administrador (datos de contacto y ubicación, con `Reply-To` al comprador); un `rejected` avisa solo al comprador. El resto de los estados no notifica. Se puede apagar entero con el filtro `simple_form_email_enabled`. El monto va con `number_format` entero (nunca float) y el nombre del remitente se limpia de saltos de línea.
