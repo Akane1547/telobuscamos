@@ -1,0 +1,16 @@
+# Herramientas y pruebas de desarrollo: no se despliegan.
+tests/
+vendor/
+deploy/
+composer.json
+composer.lock
+composer.phar
+phpunit.xml.dist
+.phpunit.cache/
+.phpunit.result.cache
+.gitignore
+.git/
+
+# Documentación interna del proceso: no va en el zip público.
+AUDITORIA.md
+FIX.md
