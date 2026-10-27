@@ -96,6 +96,10 @@ function apply_filters( $hook, $value, ...$args ) {
 	return \SimpleForm\Tests\FakeWordPress::apply_filters( (string) $hook, $value, $args );
 }
 
+function wp_mail( $to, $subject, $message, $headers = '' ) {
+	return \SimpleForm\Tests\FakeWordPress::wp_mail( $to, $subject, $message, $headers );
+}
+
 function set_transient( $key, $value, $expiration = 0 ) {
 	return \SimpleForm\Tests\FakeWordPress::set_transient( (string) $key, $value, (int) $expiration );
 }

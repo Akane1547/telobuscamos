@@ -30,12 +30,16 @@ final class FakeWordPress {
 	/** @var array Filtros que registran las pruebas. */
 	private static $filters = array();
 
+	/** @var array Correos capturados por el doble de wp_mail. */
+	private static $mails = array();
+
 	public static function reset(): void {
 		self::$options    = array();
 		self::$home       = 'http://telobuscamos.local';
 		self::$salt       = 'salt-de-prueba-0123456789';
 		self::$transients = array();
 		self::$filters    = array();
+		self::$mails      = array();
 		self::$referer = 'https://telobuscamos.local/mapa/';
 	}
 
@@ -162,5 +166,26 @@ final class FakeWordPress {
 	 */
 	public static function current_time( string $type = 'mysql' ): string {
 		return '2026-10-08 12:00:00';
+	}
+
+	/**
+	 * Doble de wp_mail(): captura el envío en vez de mandarlo de verdad.
+	 */
+	public static function wp_mail( $to, $subject, $message, $headers = '' ): bool {
+		self::$mails[] = array(
+			'to'      => $to,
+			'subject' => $subject,
+			'message' => $message,
+			'headers' => $headers,
+		);
+
+		return true;
+	}
+
+	/**
+	 * Correos capturados por el doble, en orden de envío.
+	 */
+	public static function mails(): array {
+		return self::$mails;
 	}
 }

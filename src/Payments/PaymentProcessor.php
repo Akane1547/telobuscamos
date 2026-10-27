@@ -16,6 +16,7 @@
 namespace SimpleForm\Payments;
 
 use SimpleForm\Database\OrderRepository;
+use SimpleForm\Mail\Mailer;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -107,6 +108,11 @@ final class PaymentProcessor {
 		if ( ! OrderRepository::update( $order_id, $fields ) ) {
 			return $vacio;
 		}
+
+		// El pedido recién movido, con el estado y la fecha ya aplicados: es lo
+		// que necesita el correo. No se relee de la base a propósito, para que
+		// apply() no dependa de una consulta más.
+		Mailer::notify( array_merge( $order, $fields ) );
 
 		return array(
 			'status' => $nuevo,
