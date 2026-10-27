@@ -7,6 +7,7 @@
 
 namespace SimpleForm\Core;
 
+use SimpleForm\Account\Phone;
 use SimpleForm\Database\OrderRepository;
 use SimpleForm\Payments\Gateway;
 use SimpleForm\Payments\Gateways;
@@ -140,14 +141,7 @@ class Ajax {
 	 * @return string 9 dígitos, o '' si no es un celular chileno válido.
 	 */
 	private function normalize_phone( string $raw ): string {
-		$digits = (string) preg_replace( '/\D+/', '', $raw );
-
-		// "+56 9 1234 5678" llega como 56912345678: se descarta el código de país.
-		if ( 11 === strlen( $digits ) && 0 === strpos( $digits, '56' ) ) {
-			$digits = substr( $digits, 2 );
-		}
-
-		return preg_match( '/^9\d{8}$/', $digits ) ? $digits : '';
+		return Phone::normalize( $raw );
 	}
 
 	/**

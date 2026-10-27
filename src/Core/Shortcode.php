@@ -62,6 +62,10 @@ class Shortcode {
 		// ninguno activo el Paso 3 no ofrece nada y el aviso lo explica.
 		$payment_methods = \SimpleForm\Payments\PaymentConfig::enabled_ids();
 
+		// Datos del cliente autenticado: la cuenta es la fuente de verdad y el
+		// servidor los pone en el formulario. Un invitado no tiene ninguno.
+		$customer = \SimpleForm\Account\Customer::current();
+
 		ob_start();
 		?>
 		<div class="pn-form-wrapper">
@@ -92,13 +96,13 @@ class Shortcode {
 					<section class="pn-step" data-step-panel="1">
 						<div class="pn-form__row">
 							<label for="pn-full-name" class="pn-form__label"><?php esc_html_e( 'Nombre completo', 'simple-form' ); ?></label>
-							<input type="text" id="pn-full-name" name="name" class="pn-form__input" placeholder="<?php echo esc_attr__( 'Ej: Juan Pérez', 'simple-form' ); ?>" autocomplete="name" required />
+							<input type="text" id="pn-full-name" name="name" class="pn-form__input" value="<?php echo esc_attr( $customer['name'] ); ?>" placeholder="<?php echo esc_attr__( 'Ej: Juan Pérez', 'simple-form' ); ?>" autocomplete="name" required />
 							<span class="pn-form__error" data-error-for="name"></span>
 						</div>
 
 						<div class="pn-form__row">
 							<label for="pn-email" class="pn-form__label"><?php esc_html_e( 'Correo electrónico', 'simple-form' ); ?></label>
-							<input type="email" id="pn-email" name="email" class="pn-form__input" placeholder="tu@correo.com" autocomplete="email" inputmode="email" required />
+							<input type="email" id="pn-email" name="email" class="pn-form__input" value="<?php echo esc_attr( $customer['email'] ); ?>" placeholder="tu@correo.com" autocomplete="email" inputmode="email" required />
 							<span class="pn-form__error" data-error-for="email"></span>
 						</div>
 
@@ -106,7 +110,7 @@ class Shortcode {
 							<label for="pn-phone" class="pn-form__label"><?php esc_html_e( 'Teléfono', 'simple-form' ); ?></label>
 							<div class="pn-form__input-group">
 								<span class="pn-form__prefix">+56</span>
-								<input type="tel" id="pn-phone" name="phone" class="pn-form__input" placeholder="9 1234 5678" autocomplete="tel" inputmode="tel" required />
+								<input type="tel" id="pn-phone" name="phone" class="pn-form__input" value="<?php echo esc_attr( \SimpleForm\Account\Phone::local( $customer['phone'] ) ); ?>" placeholder="9 1234 5678" autocomplete="tel" inputmode="tel" required />
 							</div>
 							<span class="pn-form__error" data-error-for="phone"></span>
 						</div>

@@ -1,0 +1,358 @@
+/*
+ * Cuenta del cliente: /iniciar-sesion y /perfil.
+ *
+ * Solo se carga en esas dos páginas (Pages::assets()). Reutiliza la paleta y la
+ * tipografía del tema mediante las variables --tb-*, con el valor del sitio como
+ * respaldo para que la hoja no dependa de que el tema esté activo.
+ */
+
+/* ---------- Comunes ---------- */
+
+.sf-account {
+	--sf-negro: var(--tb-negro, #000000);
+	--sf-amarillo: var(--tb-amarillo, #FFC600);
+	--sf-amarillo-claro: var(--tb-amarillo-claro, #FFD747);
+	--sf-crema: var(--tb-crema, #F2EFE8);
+	--sf-blanco: var(--tb-blanco, #FFFFFF);
+	--sf-fuente: var(--tb-fuente, 'Poppins', sans-serif);
+	font-family: var(--sf-fuente);
+}
+
+.sf-container {
+	width: 100%;
+	max-width: 780px;
+	margin-inline: auto;
+	padding-inline: 24px;
+}
+
+/* ---------- Iniciar sesión / registro ---------- */
+
+.sf-account--login {
+	position: relative;
+	isolation: isolate;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: calc(100vh - 100px);
+	padding: 56px 20px;
+	background-color: var(--sf-crema);
+	overflow: hidden;
+}
+
+/* Fondo con fade: la textura se ve arriba y se disuelve hacia la crema del
+   sitio, para que el cuadro del formulario quede como único protagonista. */
+.sf-account__veil {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	background-image:
+		linear-gradient(
+			180deg,
+			rgba(243, 236, 220, 0.55) 0%,
+			rgba(243, 236, 220, 0.28) 45%,
+			rgba(242, 239, 232, 0.72) 100%
+		),
+		url('../img/abstract-luxury.jpg');
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+}
+
+.sf-account__inner {
+	width: 100%;
+	max-width: 460px;
+}
+
+.sf-account__card {
+	padding: 40px 36px 32px;
+	background: var(--sf-blanco);
+	border-top: 4px solid var(--sf-amarillo);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 28px 64px rgba(0, 0, 0, 0.26);
+}
+
+.sf-account__brand {
+	margin-bottom: 24px;
+	text-align: center;
+}
+
+.sf-account__brand img {
+	max-height: 56px;
+	width: auto;
+	margin-inline: auto;
+}
+
+.sf-account__brand-name {
+	font-size: 22px;
+	font-weight: 700;
+}
+
+.sf-account__title {
+	margin: 0 0 8px;
+	font-size: 32px;
+	font-weight: 700;
+	line-height: 1.15;
+	color: var(--sf-negro);
+	text-align: center;
+}
+
+.sf-account__lead {
+	margin: 0 0 28px;
+	font-size: 15px;
+	font-weight: 300;
+	line-height: 1.5;
+	color: rgba(0, 0, 0, 0.65);
+	text-align: center;
+}
+
+.sf-account__alert {
+	margin: 0 0 20px;
+	padding: 12px 14px;
+	border-left: 4px solid #c02626;
+	background: rgba(192, 38, 38, 0.08);
+	font-size: 15px;
+	font-weight: 500;
+	line-height: 1.4;
+	color: #7a1414;
+}
+
+.sf-account__form {
+	display: grid;
+	gap: 18px;
+}
+
+.sf-account__field {
+	display: grid;
+	gap: 6px;
+}
+
+.sf-account__field label {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--sf-negro);
+}
+
+.sf-account__field input {
+	width: 100%;
+	padding: 14px 16px;
+	font-family: inherit;
+	font-size: 16px;
+	color: var(--sf-negro);
+	background: var(--sf-blanco);
+	border: 1.5px solid rgba(0, 0, 0, 0.18);
+	border-radius: 8px;
+	transition: border-color 150ms, box-shadow 150ms;
+}
+
+.sf-account__field input:focus {
+	outline: none;
+	border-color: var(--sf-negro);
+	box-shadow: 0 0 0 3px rgba(255, 198, 0, 0.45);
+}
+
+/* Teléfono: +56 fijo a la izquierda, igual que en el formulario de pedido. */
+.sf-account__group {
+	display: flex;
+	align-items: stretch;
+	min-height: 52px;
+	border: 1.5px solid rgba(0, 0, 0, 0.18);
+	border-radius: 8px;
+	overflow: hidden;
+	background: var(--sf-blanco);
+}
+
+.sf-account__group:focus-within {
+	border-color: var(--sf-negro);
+	box-shadow: 0 0 0 3px rgba(255, 198, 0, 0.45);
+}
+
+.sf-account__prefix {
+	display: flex;
+	align-items: center;
+	padding-inline: 14px;
+	background: var(--sf-crema);
+	font-size: 16px;
+	font-weight: 600;
+	border-right: 1.5px solid rgba(0, 0, 0, 0.12);
+}
+
+.sf-account__group input {
+	border: none;
+	border-radius: 0;
+	background: transparent;
+}
+
+.sf-account__group input:focus {
+	box-shadow: none;
+}
+
+.sf-account__hint {
+	margin: 0;
+	font-size: 13px;
+	font-weight: 300;
+	color: rgba(0, 0, 0, 0.55);
+}
+
+.sf-account__submit {
+	margin-top: 6px;
+	padding: 15px 40px;
+	font-family: inherit;
+	font-size: 18px;
+	font-weight: 600;
+	color: var(--sf-negro);
+	background: var(--sf-amarillo);
+	border: 2px solid var(--sf-negro);
+	border-radius: 40px;
+	cursor: pointer;
+	touch-action: manipulation;
+	transition: background-color 200ms;
+}
+
+.sf-account__submit:hover,
+.sf-account__submit:focus-visible {
+	background: var(--sf-amarillo-claro);
+}
+
+.sf-account__switch {
+	margin: 24px 0 0;
+	font-size: 15px;
+	font-weight: 400;
+	color: rgba(0, 0, 0, 0.7);
+	text-align: center;
+}
+
+.sf-account__switch a {
+	font-weight: 600;
+	color: var(--sf-negro);
+	text-decoration: underline;
+	text-decoration-thickness: 2px;
+	text-decoration-color: var(--sf-amarillo);
+	text-underline-offset: 3px;
+}
+
+.sf-account__switch a:hover {
+	background: var(--sf-amarillo);
+}
+
+/* ---------- Perfil ---------- */
+
+.sf-account--profile {
+	padding-block: 64px;
+	background: var(--sf-crema);
+}
+
+.sf-profile {
+	padding: 40px 36px;
+	background: var(--sf-blanco);
+	border-top: 4px solid var(--sf-amarillo);
+}
+
+.sf-profile__kicker {
+	margin: 0 0 12px;
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 2px;
+	text-transform: uppercase;
+	color: rgba(0, 0, 0, 0.5);
+}
+
+.sf-profile__title {
+	margin: 0 0 32px;
+	font-size: 34px;
+	font-weight: 700;
+	line-height: 1.1;
+	color: var(--sf-negro);
+}
+
+.sf-profile__list {
+	margin: 0 0 32px;
+	padding: 0;
+}
+
+.sf-profile__row {
+	display: grid;
+	gap: 4px;
+	padding: 18px 0;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.sf-profile__row dt {
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 1.5px;
+	text-transform: uppercase;
+	color: rgba(0, 0, 0, 0.5);
+}
+
+.sf-profile__row dd {
+	margin: 0;
+	font-size: 19px;
+	font-weight: 500;
+	color: var(--sf-negro);
+	overflow-wrap: anywhere;
+}
+
+/* Botón de salida: mismo lenguaje que el botón del menú (negro), no el
+   amarillo de las acciones principales. */
+.sf-profile__logout {
+	display: inline-block;
+	padding: 14px 36px;
+	font-size: 17px;
+	font-weight: 600;
+	color: var(--sf-blanco);
+	background: var(--sf-negro);
+	border: 2px solid var(--sf-negro);
+	border-radius: 40px;
+	transition: background-color 200ms, color 200ms;
+}
+
+.sf-profile__logout:hover,
+.sf-profile__logout:focus-visible {
+	background: var(--sf-amarillo);
+	color: var(--sf-negro);
+}
+
+/* ---------- Móvil ---------- */
+
+@media (max-width: 600px) {
+	.sf-account--login {
+		min-height: calc(100vh - 80px);
+		padding: 32px 16px;
+	}
+
+	.sf-account__card {
+		padding: 28px 20px 24px;
+	}
+
+	.sf-account__title {
+		font-size: 26px;
+	}
+
+	.sf-account__lead {
+		margin-bottom: 22px;
+	}
+
+	.sf-account__submit {
+		width: 100%;
+	}
+
+	.sf-account--profile {
+		padding-block: 32px;
+	}
+
+	.sf-profile {
+		padding: 28px 20px;
+	}
+
+	.sf-profile__title {
+		font-size: 27px;
+	}
+
+	.sf-profile__row dd {
+		font-size: 17px;
+	}
+
+	.sf-profile__logout {
+		display: block;
+		text-align: center;
+	}
+}

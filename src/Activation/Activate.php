@@ -28,6 +28,7 @@ final class Activate {
 
         self::check_requirements();
         self::create_tables();
+        AccountPages::install();
 
         // La limpieza programada: borradores abandonados y punteros vencidos.
         Cleanup::maybe_schedule();

@@ -9,6 +9,8 @@ namespace SimpleForm\Core;
 use SimpleForm\Admin\AdminOrders;
 use SimpleForm\Admin\AdminPayments;
 use SimpleForm\Admin\AdminServices;
+use SimpleForm\Account\Auth as AccountAuth;
+use SimpleForm\Account\Pages as AccountPages;
 use SimpleForm\Core\Cleanup;
 use SimpleForm\Database\Database;
 use SimpleForm\Rest\WebhookController;
@@ -52,6 +54,24 @@ class Plugin {
         $assets = new Assets( SIMPLE_FORM_VERSION );
         new Ajax();
         new Shortcode( $assets );
+
+        // Cuenta del cliente: páginas /iniciar-sesion y /perfil. Solo en el
+        // front; en wp-admin no hay formularios que atender.
+        if ( ! is_admin() ) {
+            new AccountPages();
+            new AccountAuth();
+        }
+
+        // La página /perfil tiene que existir para que la ruta responda. Se
+        // crea una sola vez, también en instalaciones que ya estaban activas.
+        // Va en wp_loaded y no acá: en plugins_loaded $wp_rewrite todavía no
+        // existe y wp_insert_post() revienta al calcular el permalink.
+        add_action(
+            'wp_loaded',
+            function () {
+                \SimpleForm\Activation\AccountPages::maybe_install();
+            }
+        );
 
         // Solo instanciar la pantalla de administración si estamos en wp-admin
         if ( is_admin() ) {

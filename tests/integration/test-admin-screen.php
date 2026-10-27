@@ -161,11 +161,15 @@ check(
 
 // El Access Token no se compara nunca contra su valor: con una constante en
 // wp-config.php la fuente es la constante, y el valor no se imprime. Se
-// comprueba de dónde sale, más que lo que vale.
+// comprueba de dónde sale, más que lo que vale. Una constante definida y vacía
+// no es una fuente: credential()/source() caen a lo guardado (es lo que deja
+// wp-config.php listo para pegar el token sin romper la pantalla).
+$token_en_constante = defined( 'SIMPLE_FORM_MERCADO_PAGO_ACCESS_TOKEN' )
+	&& '' !== (string) constant( 'SIMPLE_FORM_MERCADO_PAGO_ACCESS_TOKEN' );
 check(
-	'el Access Token lo sirve la constante de wp-config.php',
+	'el Access Token sale de la fuente que corresponde',
 	$PaymentConfig::source( 'mercado_pago', 'access_token' ),
-	defined( 'SIMPLE_FORM_MERCADO_PAGO_ACCESS_TOKEN' ) ? 'constant' : 'stored'
+	$token_en_constante ? 'constant' : 'stored'
 );
 
 $crudo = json_encode( get_option( 'simple_form_payment_credentials' ) );
