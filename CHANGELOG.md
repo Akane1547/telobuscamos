@@ -1,5 +1,9 @@
 # Cambios
 
+## 7b72bfd - Test: el admin acepta credenciales de la constante o guardadas cifradas
+
+- **tests/integration/test-admin-screen.php**: la suite exigía `source() === 'constant'` y que la pantalla dijera de qué constante sale. Con las credenciales guardadas desde el panel (`source=stored`, cifradas) la comprobación pasa a ser que la fuente sea segura (`constant` o `stored`) y que el render no imprima el secreto: si la fuente es una constante, verifica los avisos de wp-config.php; si es guardada, verifica el campo enmascarado y vacío. El webhook y el resto de las suites vuelven a verde.
+
 ## e084158 - Fix: el radio va de 100 m a 1 km y el slider deja de salirse en celular
 
 - **src/Database/Database.php**: `radius_km` pasa de `SMALLINT UNSIGNED` a `DECIMAL(5,2)` y `DB_VERSION` sube a 2. `dbDelta` migra la columna; los pedidos existentes conservan su valor (1.00, 10.00…).
