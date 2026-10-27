@@ -1,5 +1,12 @@
 # Cambios
 
+## 3f15478 - Feat: correos transaccionales (aprobado y rechazo)
+
+- **src/Mail/Mailer.php** (nuevo): único sitio que envía correos. Se dispara desde `PaymentProcessor` solo cuando una transición cambia de verdad el estado (un reintento del webhook no repite el correo). Un `approved` avisa al comprador (resumen: servicio, radio legible, total CLP entero y fecha) y al administrador (datos de contacto y ubicación, con `Reply-To` al comprador); un `rejected` avisa solo al comprador. El resto de los estados no notifica. Se puede apagar entero con el filtro `simple_form_email_enabled`. El monto va con `number_format` entero (nunca float) y el nombre del remitente se limpia de saltos de línea.
+- **src/Payments/PaymentProcessor.php**: tras aplicar una transición, llama a `Mailer::notify()` con el pedido ya movido (estado y `paid_at` aplicados), sin releer de la base.
+- **tests/bootstrap.php** y **tests/support/FakeWordPress.php**: doble de `wp_mail` que captura los envíos en memoria (con `reset()` por prueba) para poder asertar destinatarios y contenido sin mandar correos reales.
+- **tests/unit/MailerTest.php** (nuevo): 9 pruebas — a quién llega cada correo, el filtro de apagado, la ausencia de envío cuando falta el correo del comprador o del admin, el `Reply-To`, y que el monto y el radio se formatean enteros.
+
 ## ccf5cf5 - Feat: pantalla de pedidos en wp-admin, solo lectura
 
 - **src/Admin/AdminOrders.php** (nuevo): menú **Pedidos** (`manage_options`, `dashicons-list-view`). Listado paginado de 20 por página con id, fecha en la zona del sitio, cliente, servicio, radio legible (m/km), monto CLP entero, estado traducido e ID de pago externo; el id enlaza al detalle. Detalle con cliente, snapshot de servicio y precios, ubicación, pago (medio, estado, id, `paid_at`) y la tabla de eventos de pago con su clave de idempotencia. Si el pedido no existe, avisa y ofrece volver. No edita montos ni estados: eso sigue siendo exclusivo del webhook.
