@@ -1,5 +1,10 @@
 # Cambios
 
+## 3ffa23d - Feat: empaquetado (readme.txt y .distignore)
+
+- **readme.txt** (nuevo): ficha del plugin en formato de WordPress.org — descripción de los 4 pasos, la cobertura, el pago con Mercado Pago, instalación, preguntas frecuentes y changelog. Incluye el aviso de que desinstalar borra las tablas propias. `Stable tag: 1.0.0`, coherente con la cabecera.
+- **.distignore** (nuevo): deja fuera del zip `tests/`, `vendor/`, `deploy/`, `composer.*`, `phpunit.xml.dist`, cachés de PHPUnit, `.gitignore` y la documentación interna (`AUDITORIA.md`, `FIX.md`).
+
 ## 9c21c71 - Feat: canal de log propio, apagado por defecto
 
 - **src/Core/Logger.php** (nuevo): un solo punto para los avisos de diagnóstico. Apagado por defecto; se enciende con el filtro `simple_form_logging_enabled` o la constante `SIMPLE_FORM_LOGGING` (que manda sobre el filtro). Escribe con el prefijo `[simple-form][canal]` y nunca credenciales ni datos personales.
