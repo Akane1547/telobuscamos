@@ -1,5 +1,16 @@
 # Cambios
 
+## 51cb55b - Fix: hallazgos de las pruebas de seguridad de la cuenta
+
+- **src/Account/Auth.php**: `get_user_by()` devuelve `false`, no `null`. El ternario del login comparaba contra `null`, así que con un correo inexistente hacía `$user->user_login` sobre `false` y el warning de PHP salía impreso en el HTML: la respuesta de un correo que no existe medía distinto que la de uno que sí. Enumeración de cuentas por diferencia de contenido, detectada por la propia prueba. Ahora se comprueba `instanceof WP_User`.
+- **src/Account/Pages.php**: `guard_admin()` manda a `/perfil` al cliente sin `edit_posts` que entra a `/wp-admin/` (WordPress le mostraba un escritorio vacío). No toca AJAX ni REST.
+- **src/Core/Plugin.php**: `Pages` se instancia también en wp-admin, que es donde corre esa guarda; `Auth` sigue solo en el front.
+- **tests/security/account-security.php** (nuevo): 152 pruebas que atacan el sitio por HTTP real, con cookies y nonces de verdad, y miran el estado del servidor con WordPress cargado: autenticación (válida, clave mala, correo inexistente, campos vacíos, correo malformado, espacios), `/perfil` sin sesión, logout y cookie previa al logout, enumeración por contenido y código, `user_id` e IDOR por ruta y query, nonce (sin, vacío, inválido, de otra acción), CSRF con `Origin` externo, XSS reflejado y almacenado en el nombre (perfil y prellenado, cerrando y reabriendo sesión), inyección SQL, teléfono (vacío, texto, HTML, SQL, largo, corto, sin 9, con +56), correo (inválido, con HTML, con espacios, muy largo, puntos seguidos), nombre (vacío, 5.000 caracteres), contraseña (vacía, corta, de 4.000 caracteres, sin fugas en la respuesta), fuerza bruta con el límite medido, sesión y cookie falsificada, cambio A→B en el mismo navegador, `localStorage` (y manipulación de claves sembradas, que no autentican), manipulación de `simple-form` con la cuenta intacta, aislamiento A/B, caché de `/perfil`, open redirect (`redirect_to`/`next`/`return_url`), datos sensibles en respuestas, `role`/`capabilities` ignorados, wp-admin y log de PHP sin contraseñas. Crea sus cuentas y las borra al final, junto con los pedidos que genera.
+- **tests/security/run.sh** (nuevo) y **composer.json**: `composer test:security` corre la suite resolviendo el PHP de Local y el socket, después de comprobar que el sitio responde.
+- **souls.md** (nuevo): el documento del proyecto en el repo, con el capítulo 48 (pruebas de seguridad), 49 (criterio de aprobación), 50 (mínimas antes de producción) y 51 (regla final). Se excluye del zip en **.distignore**.
+
+Decisiones que quedan documentadas y no se cambiaron: el registro sigue diciendo "Ya existe una cuenta con este correo" (con límite de 5 por minuto) porque sin confirmación por correo cualquier alternativa tendría que mentir sobre el resultado; y `sf_orders` todavía no guarda `user_id` (souls.md §37), que es la entrega siguiente.
+
 ## d26c12e - Feat: cuenta del cliente (iniciar sesion, registro y perfil)
 
 - **src/Account/Phone.php** (nuevo): el formato del celular chileno en un solo lugar — nueve dígitos internos, `+56 9 1234 5678` al mostrar. `Ajax::normalize_phone()` pasa a delegar acá, así que el registro y el pedido no pueden divergir.
