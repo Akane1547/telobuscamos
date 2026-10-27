@@ -283,15 +283,17 @@ function limpiar(): void {
 
 	require_once ABSPATH . 'wp-admin/includes/user.php';
 
-	// Los correos con espacios se guardan saneados ("secconespacios…"), sin el
-	// guion, así que el filtro mira el login: todos los de esta suite empiezan
-	// con sec y su correo es de example.com.
+	// Filtro por login, no por correo: los correos de prueba se guardan
+	// saneados y a veces el dominio queda raro ("example.comscriptalert1script"
+	// en el caso de HTML pegado al correo), así que exigir @example.com dejaba
+	// residuos. Todos los de esta suite empiezan con sec y su correo contiene
+	// "example".
 	foreach ( get_users( array( 'number' => 300 ) ) as $u ) {
 		if ( ! preg_match( '/^sec/', (string) $u->user_login ) ) {
 			continue;
 		}
 
-		if ( ! preg_match( '/@example\.com$/', (string) $u->user_email ) ) {
+		if ( false === strpos( (string) $u->user_email, 'example' ) ) {
 			continue;
 		}
 
@@ -1199,7 +1201,7 @@ try {
 	limpiar();
 	$restantes = 0;
 	foreach ( get_users( array( 'number' => 300 ) ) as $u ) {
-		if ( preg_match( '/^sec/', (string) $u->user_login ) && preg_match( '/@example\.com$/', (string) $u->user_email ) ) {
+		if ( preg_match( '/^sec/', (string) $u->user_login ) && false !== strpos( (string) $u->user_email, 'example' ) ) {
 			++$restantes;
 		}
 	}
