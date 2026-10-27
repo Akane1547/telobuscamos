@@ -25,7 +25,7 @@ final class Database {
 	/**
 	 * Versión del esquema. Subir al cambiar cualquier tabla.
 	 */
-	const DB_VERSION = 1;
+	const DB_VERSION = 2;
 
 	const TABLE_ORDERS         = 'sf_orders';
 	const TABLE_PAYMENT_EVENTS = 'sf_payment_events';
@@ -75,7 +75,7 @@ final class Database {
 				service_price_per_km BIGINT NOT NULL DEFAULT 0,
 				lat DECIMAL(10,7) NULL,
 				lng DECIMAL(10,7) NULL,
-				radius_km SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+				radius_km DECIMAL(5,2) NOT NULL DEFAULT 0,
 				amount BIGINT NOT NULL DEFAULT 0,
 				payment_method VARCHAR(64) NOT NULL DEFAULT '',
 				status VARCHAR(20) NOT NULL DEFAULT 'draft',

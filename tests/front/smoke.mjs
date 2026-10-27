@@ -341,6 +341,23 @@ async function main() {
 		const slider = await evaluar( "Math.round(document.querySelector('#pn-map-radius').getBoundingClientRect().height)" );
 		check( 'el slider del radio es táctil (>=44px)', slider >= 44, true );
 
+		// El slider trabaja en metros (100 a 1000) y el pulgar no debe salirse
+		// de su caja: sobresale 12px de cada punta del riel.
+		const sliderRadio = await evaluar( `(() => {
+			const s = document.querySelector('#pn-map-radius');
+			const caja = s.parentElement.getBoundingClientRect();
+			const c = s.getBoundingClientRect();
+			return {
+				min: s.min, max: s.max, step: s.step, valor: s.value,
+				etiqueta: document.querySelector('.map-plugin__radio-value').textContent.trim(),
+				dentro: c.left >= caja.left - 0.5 && c.right <= caja.right + 0.5,
+			};
+		})()` );
+
+		check( 'el radio va de 100 m a 1 km', JSON.stringify( [ sliderRadio.min, sliderRadio.max, sliderRadio.step ] ), JSON.stringify( [ '100', '1000', '100' ] ) );
+		check( 'arranca en 100 m', JSON.stringify( [ sliderRadio.valor, sliderRadio.etiqueta ] ), JSON.stringify( [ '100', '100 m' ] ) );
+		check( 'la barra del radio no se sale de su caja', sliderRadio.dentro, true );
+
 		// ------------------------------------------------------------------
 		console.log( '\n=== Buscador de direcciones ===' );
 
@@ -407,7 +424,7 @@ async function main() {
 				status_label: '${ etiqueta }',
 				date: '01/01/2026 12:00',
 				step1: { name: 'Prueba de humo', email: 'prueba@ejemplo.cl', phone: '912345678', description: '' },
-				step2: { service_id: 'plan', service_label: 'Plan de prueba', lat: '-33.4489', lng: '-70.6693', radius_km: 5, estimated_price: 50000 },
+				step2: { service_id: 'plan', service_label: 'Plan de prueba', lat: '-33.4489', lng: '-70.6693', radius_km: 0.3, estimated_price: 50000 },
 				step3: { payment_method: 'mercado_pago', final_price: 50000 },
 			} );
 
@@ -422,6 +439,7 @@ async function main() {
 				clase: badge ? badge.className : '',
 				conDato: campos.filter( ( t ) => t && '—' !== t ).length,
 				total: campos.length,
+				radio: ( document.querySelector('#pn-receipt-radius') || {} ).textContent || '',
 				fecha: ( document.querySelector('#pn-receipt-date') || {} ).textContent || '',
 			};
 		})()`;
@@ -431,6 +449,7 @@ async function main() {
 		check( 'pago aprobado: clase del badge', aprobado.clase.includes( 'pn-receipt__badge--approved' ), true );
 		check( 'pago aprobado: las 7 filas con dato', aprobado.conDato === aprobado.total && aprobado.total > 0, true );
 		check( 'pago aprobado: fecha del servidor', aprobado.fecha, '01/01/2026 12:00' );
+		check( 'el recibo muestra el radio en metros', aprobado.radio.trim(), '300 m' );
 
 		const pendiente = await evaluar( pintarRecibo( 'pending', 'Pago pendiente' ) );
 		check( 'pago pendiente: etiqueta', pendiente.badge, 'Pago pendiente' );

@@ -111,18 +111,21 @@ class Ajax {
 	}
 
 	/**
-	 * Lee y valida el radio en km (1 a 20).
+	 * Lee y valida el radio en km (0.1 a 1: de 100 metros a 1 km).
+	 *
+	 * Devuelve 0.0 cuando no sirve. El radio nunca es 0, así que sirve de
+	 * centinela sin necesidad de un null.
 	 */
-	private function read_radius_km(): int {
+	private function read_radius_km(): float {
 		$raw_radius = isset( $_POST['radius_km'] ) ? wp_unslash( $_POST['radius_km'] ) : '';
 
 		if ( ! is_numeric( $raw_radius ) ) {
-			return 0;
+			return 0.0;
 		}
 
-		$radius = (int) $raw_radius;
+		$radius = round( (float) $raw_radius, 2 );
 
-		return ( $radius >= 1 && $radius <= 20 ) ? $radius : 0;
+		return ( $radius >= 0.1 && $radius <= 1.0 ) ? $radius : 0.0;
 	}
 
 	/**
@@ -166,9 +169,12 @@ class Ajax {
 
 	/**
 	 * Única fórmula de precio del plugin. CLP entero, nunca float.
+	 *
+	 * El radio puede ser fraccionario (100 metros), así que la multiplicación se
+	 * redondea una sola vez, acá: lo que se guarda es un entero.
 	 */
-	private function compute_price( int $base_price, int $price_per_km, int $radius_km ): int {
-		return $base_price + ( $price_per_km * $radius_km );
+	private function compute_price( int $base_price, int $price_per_km, float $radius_km ): int {
+		return (int) round( $base_price + ( $price_per_km * $radius_km ) );
 	}
 
 	/**
@@ -253,7 +259,7 @@ class Ajax {
 		$coords     = $this->read_coordinates();
 		$radius_km  = $this->read_radius_km();
 
-		if ( empty( $service_id ) || null === $coords || 0 === $radius_km ) {
+		if ( empty( $service_id ) || null === $coords || $radius_km <= 0 ) {
 			wp_send_json_error( array( 'message' => __( 'Datos inválidos para calcular el precio.', 'simple-form' ) ), 422 );
 		}
 
@@ -428,7 +434,7 @@ class Ajax {
 		$radius_km  = $this->read_radius_km();
 
 
-		if ( empty( $service_id ) || null === $coords || 0 === $radius_km ) {
+		if ( empty( $service_id ) || null === $coords || $radius_km <= 0 ) {
 			wp_send_json_error( array( 'message' => __( 'Faltan datos de ubicación o servicio.', 'simple-form' ) ), 422 );
 		}
 
@@ -515,7 +521,7 @@ class Ajax {
 		$amount = $this->compute_price(
 			(int) $order['service_base_price'],
 			(int) $order['service_price_per_km'],
-			(int) $order['radius_km']
+			(float) $order['radius_km']
 		);
 
 		$fields = array(

@@ -183,7 +183,7 @@ final class OrderRepository {
 			return '' !== (string) $order['service_id']
 				&& null !== $order['lat']
 				&& null !== $order['lng']
-				&& (int) $order['radius_km'] >= 1;
+				&& (float) $order['radius_km'] >= 0.1;
 		}
 
 		return false;
@@ -220,7 +220,7 @@ final class OrderRepository {
 				'service_label'   => (string) $order['service_label'],
 				'lat'             => (float) $order['lat'],
 				'lng'             => (float) $order['lng'],
-				'radius_km'       => (int) $order['radius_km'],
+				'radius_km'       => (float) $order['radius_km'],
 				'estimated_price' => (int) $order['amount'],
 			);
 		}

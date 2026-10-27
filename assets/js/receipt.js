@@ -32,7 +32,7 @@
 				'#pn-receipt-phone': step1.phone,
 				'#pn-receipt-description': step1.description || 'Sin descripción',
 				'#pn-receipt-service': step2.service_label,
-				'#pn-receipt-radius': step2.radius_km ? `${ step2.radius_km } km` : null,
+				'#pn-receipt-radius': step2.radius_km ? window.SimpleForm.formatRadius( step2.radius_km ) : null,
 				'#pn-receipt-price': price != null ? `$${ Math.round( price ).toLocaleString( 'es-CL' ) }` : null,
 			};
 

@@ -180,9 +180,10 @@ class Shortcode {
 
 							<div class="map-plugin__radio-control">
 								<label for="pn-map-radius" class="map-plugin__radio-label">
-									<?php esc_html_e( 'Radio:', 'simple-form' ); ?> <span class="map-plugin__radio-value">1</span> km
+									<?php esc_html_e( 'Radio:', 'simple-form' ); ?> <span class="map-plugin__radio-value">100 m</span>
 								</label>
-								<input type="range" id="pn-map-radius" class="map-plugin__radio-slider" min="1" max="20" step="1" value="1" />
+								<?php // El slider va en metros (100 a 1000, de a 100) y el campo que viaja al servidor en km. ?>
+								<input type="range" id="pn-map-radius" class="map-plugin__radio-slider" min="100" max="1000" step="100" value="100" />
 							</div>
 
 							<div class="map-plugin__price">
@@ -196,7 +197,7 @@ class Shortcode {
 
 							<input type="hidden" id="pn-lat" name="lat" value="" />
 							<input type="hidden" id="pn-lng" name="lng" value="" />
-							<input type="hidden" id="pn-radius" name="radius_km" value="1" />
+							<input type="hidden" id="pn-radius" name="radius_km" value="0.1" />
 						</div>
 					</section>
 

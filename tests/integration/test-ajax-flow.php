@@ -172,47 +172,47 @@ check(
 check( 'el nombre se actualizó', $json['data']['progress']['step1']['name'], 'Ana P. Modificado' );
 
 echo "\n=== Paso 2: exige sesión y paso 1 ===\n";
-list( $status, $json ) = call( $ajax, 'save_step2', array( 'service_id' => 'sf-test-plan' ) + $santiago + array( 'radius_km' => 5 ) );
+list( $status, $json ) = call( $ajax, 'save_step2', array( 'service_id' => 'sf-test-plan' ) + $santiago + array( 'radius_km' => 0.5 ) );
 check( 'sin sesión -> 410', $status, 410 );
 
-list( $status, $json ) = call( $ajax, 'save_step2', array( 'session_id' => 'sesionInventada123', 'service_id' => 'sf-test-plan' ) + $santiago + array( 'radius_km' => 5 ) );
+list( $status, $json ) = call( $ajax, 'save_step2', array( 'session_id' => 'sesionInventada123', 'service_id' => 'sf-test-plan' ) + $santiago + array( 'radius_km' => 0.5 ) );
 check( 'sesión inexistente -> 410', $status, 410 );
 
 echo "\n=== Paso 2: precio y snapshot ===\n";
-list( $status, $json ) = call( $ajax, 'save_step2', array( 'session_id' => $session, 'service_id' => 'sf-test-plan', 'estimated_price' => 1 ) + $santiago + array( 'radius_km' => 5 ) );
+list( $status, $json ) = call( $ajax, 'save_step2', array( 'session_id' => $session, 'service_id' => 'sf-test-plan', 'estimated_price' => 1 ) + $santiago + array( 'radius_km' => 0.5 ) );
 check( 'success = true', $json['success'], true );
 check( 'current_step = 3', $json['data']['progress']['current_step'], 3 );
-// 10001 + 500*5 = 12501
-check( 'precio redondeado a CLP entero', $json['data']['progress']['step2']['estimated_price'], 12501 );
+// 10001 + 500*0.5 = 10251
+check( 'precio redondeado a CLP entero', $json['data']['progress']['step2']['estimated_price'], 10251 );
 check( 'etiqueta del servicio guardada', $json['data']['progress']['step2']['service_label'], 'Plan de prueba' );
 
 $row2 = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM `{$table}` WHERE id = %d", $order_id ), ARRAY_A );
-check( 'el precio enviado por el cliente se ignoró', (int) $row2['amount'], 12501 );
+check( 'el precio enviado por el cliente se ignoró', (int) $row2['amount'], 10251 );
 check( 'snapshot del precio base', (int) $row2['service_base_price'], 10001 );
 check( 'snapshot del precio por km', (int) $row2['service_price_per_km'], 500 );
 check( 'lat persistida', (float) $row2['lat'], -33.4489 );
-check( 'radius_km persistido', (int) $row2['radius_km'], 5 );
+check( 'radius_km persistido', (float) $row2['radius_km'], 0.5 );
 check( 'current_step en la fila', (int) $row2['current_step'], 3 );
 
 echo "\n=== Paso 2: validaciones de ubicación ===\n";
-list( $status, $json ) = call( $ajax, 'save_step2', array( 'session_id' => $session, 'service_id' => 'sf-test-plan', 'lat' => 'abc', 'lng' => 'def', 'radius_km' => 5 ) );
+list( $status, $json ) = call( $ajax, 'save_step2', array( 'session_id' => $session, 'service_id' => 'sf-test-plan', 'lat' => 'abc', 'lng' => 'def', 'radius_km' => 0.5 ) );
 check( 'coordenadas no numéricas -> 422', $status, 422 );
 
-list( $status, $json ) = call( $ajax, 'save_step2', array( 'session_id' => $session, 'service_id' => 'sf-test-plan', 'lat' => '-40.0', 'lng' => '-70.0', 'radius_km' => 5 ) );
+list( $status, $json ) = call( $ajax, 'save_step2', array( 'session_id' => $session, 'service_id' => 'sf-test-plan', 'lat' => '-40.0', 'lng' => '-70.0', 'radius_km' => 0.5 ) );
 check( 'fuera de cobertura -> 422', $status, 422 );
 
-list( $status, $json ) = call( $ajax, 'save_step2', array( 'session_id' => $session, 'service_id' => 'no-existe', ) + $santiago + array( 'radius_km' => 5 ) );
+list( $status, $json ) = call( $ajax, 'save_step2', array( 'session_id' => $session, 'service_id' => 'no-existe', ) + $santiago + array( 'radius_km' => 0.5 ) );
 check( 'servicio inexistente -> 404', $status, 404 );
 
 list( $status, $json ) = call( $ajax, 'save_step2', array( 'session_id' => $session, 'service_id' => 'sf-test-plan' ) + $santiago + array( 'radius_km' => 99 ) );
 check( 'radio fuera de rango -> 422', $status, 422 );
 
 $row2b = $wpdb->get_row( $wpdb->prepare( "SELECT amount, radius_km FROM `{$table}` WHERE id = %d", $order_id ), ARRAY_A );
-check( 'ninguna prueba fallida tocó el monto', (int) $row2b['amount'], 12501 );
+check( 'ninguna prueba fallida tocó el monto', (int) $row2b['amount'], 10251 );
 
 echo "\n=== calculate_price coincide con lo persistido ===\n";
-list( $status, $json ) = call( $ajax, 'calculate_price', array( 'service_id' => 'sf-test-plan' ) + $santiago + array( 'radius_km' => 5 ) );
-check( 'la vista previa da el mismo entero', $json['data']['price'], 12501 );
+list( $status, $json ) = call( $ajax, 'calculate_price', array( 'service_id' => 'sf-test-plan' ) + $santiago + array( 'radius_km' => 0.5 ) );
+check( 'la vista previa da el mismo entero', $json['data']['price'], 10251 );
 
 echo "\n=== Cobertura: Chile completo, no el círculo de 50 km ===\n";
 list( $status, $json ) = call( $ajax, 'get_coverage_area', array() );
@@ -221,10 +221,10 @@ check( 'anillos del contorno de dibujo', count( $json['data']['outline'] ), 31 )
 check( 'ya no viaja el contorno de validación', isset( $json['data']['rings'] ), false );
 check( 'las bounds traen las 4 claves', array_keys( $json['data']['bounds'] ), array( 'south', 'north', 'west', 'east' ) );
 
-list( $status, $json ) = call( $ajax, 'calculate_price', array( 'service_id' => 'sf-test-plan', 'lat' => '-53.1638', 'lng' => '-70.9171', 'radius_km' => 5 ) );
+list( $status, $json ) = call( $ajax, 'calculate_price', array( 'service_id' => 'sf-test-plan', 'lat' => '-53.1638', 'lng' => '-70.9171', 'radius_km' => 0.5 ) );
 check( 'Punta Arenas se acepta (fuera del círculo viejo)', $json['success'], true );
 
-list( $status, $json ) = call( $ajax, 'calculate_price', array( 'service_id' => 'sf-test-plan', 'lat' => '-32.8895', 'lng' => '-68.8458', 'radius_km' => 5 ) );
+list( $status, $json ) = call( $ajax, 'calculate_price', array( 'service_id' => 'sf-test-plan', 'lat' => '-32.8895', 'lng' => '-68.8458', 'radius_km' => 0.5 ) );
 check( 'Mendoza se rechaza (dentro del bbox)', $status, 422 );
 
 echo "\n=== Paso 3: el medio sale de la lista del admin ===\n";
@@ -285,7 +285,7 @@ echo "\n=== Paso 3: deja el pedido en pending ===\n";
 list( $status, $json ) = call( $ajax, 'save_step3', array( 'session_id' => $session, 'payment_method' => 'mercado_pago' ) );
 check( 'success = true', $json['success'], true );
 check( 'current_step = 4', $json['data']['progress']['current_step'], 4 );
-check( 'step3.final_price', $json['data']['progress']['step3']['final_price'], 12501 );
+check( 'step3.final_price', $json['data']['progress']['step3']['final_price'], 10251 );
 
 echo "\n=== Paso 3: lo que se le manda a Mercado Pago ===\n";
 $payload = $GLOBALS['sf_http']['body'];
@@ -293,7 +293,7 @@ $payload = $GLOBALS['sf_http']['body'];
 check( 'se llamó al endpoint de preferencias', $GLOBALS['sf_http']['url'], 'https://api.mercadopago.com/checkout/preferences' );
 check( 'devuelve el init_point', $json['data']['redirect_url'], 'https://www.mercadopago.cl/checkout/start?pref_id=123456-abc' );
 check( 'external_reference = id del pedido', $payload['external_reference'], (string) $order_id );
-check( 'unit_price = monto del servidor', $payload['items'][0]['unit_price'], 12501 );
+check( 'unit_price = monto del servidor', $payload['items'][0]['unit_price'], 10251 );
 check( 'el monto va entero', is_int( $payload['items'][0]['unit_price'] ), true );
 check( 'moneda CLP', $payload['items'][0]['currency_id'], 'CLP' );
 check( 'cantidad 1', $payload['items'][0]['quantity'], 1 );
@@ -385,7 +385,7 @@ list( $status, $json ) = call(
 		'service_id' => 'sf-test-plan',
 		'lat'        => '-33.05',
 		'lng'        => '-71.61',
-		'radius_km'  => '20',
+		'radius_km'  => '0.5',
 	)
 );
 
@@ -397,7 +397,7 @@ $despues = $wpdb->get_row(
 );
 
 check( 'el monto no cambió', (int) $despues['amount'], 15000 );
-check( 'el radio no cambió', (int) $despues['radius_km'], (int) $antes['radius_km'] );
+check( 'el radio no cambió', (float) $despues['radius_km'], (float) $antes['radius_km'] );
 check( 'la ubicación no cambió', $despues['lat'], $antes['lat'] );
 check( 'sigue approved', $despues['status'], 'approved' );
 
@@ -429,15 +429,15 @@ list( $status, $json ) = call(
 		'service_id' => 'sf-test-plan',
 		'lat'        => '-33.0500000',
 		'lng'        => '-71.6100000',
-		'radius_km'  => '20',
+		'radius_km'  => '0.5',
 	)
 );
 
 check( 'un pedido pendiente se sigue editando', $json['success'], true );
 check(
 	'y guarda el radio nuevo',
-	(int) $wpdb->get_var( $wpdb->prepare( "SELECT radius_km FROM `{$table}` WHERE id = %d", $order_id ) ),
-	20
+	(float) $wpdb->get_var( $wpdb->prepare( "SELECT radius_km FROM `{$table}` WHERE id = %d", $order_id ) ),
+	0.5
 );
 
 echo "\n=== Un precio corrupto en la opción no rompe ni da negativo ===\n";
@@ -459,10 +459,10 @@ update_option(
 list( $status, $json ) = call(
 	$ajax,
 	'calculate_price',
-	array( 'session_id' => $session, 'service_id' => 'sf-test-plan' ) + $santiago + array( 'radius_km' => 5 )
+	array( 'session_id' => $session, 'service_id' => 'sf-test-plan' ) + $santiago + array( 'radius_km' => 0.5 )
 );
 
-check( 'se normaliza a entero positivo', $json['data']['price'], 12500 );
+check( 'se normaliza a entero positivo', $json['data']['price'], 10250 );
 
 // Se deja la opción como estaba para el resto de la suite.
 update_option(

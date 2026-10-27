@@ -146,6 +146,29 @@
 		},
 
 		/**
+		 * Radio en la unidad que se lee mejor: metros hasta 1 km, después km.
+		 * Lo usan el mapa, el resumen y el recibo, para no tener tres versiones.
+		 *
+		 * @param {number} km
+		 * @return {string}
+		 */
+		formatRadius( km ) {
+			const metros = Math.round( ( parseFloat( km ) || 0 ) * 1000 );
+
+			if ( metros <= 0 ) {
+				return '—';
+			}
+
+			if ( metros < 1000 ) {
+				return `${ metros } m`;
+			}
+
+			const resto = metros % 1000;
+
+			return `${ resto === 0 ? metros / 1000 : ( metros / 1000 ).toFixed( 1 ) } km`;
+		},
+
+		/**
 		 * Helper único para llamadas AJAX a wp-admin/admin-ajax.php.
 		 *
 		 * @param {string} action Nombre de la acción registrada en class-ajax.php.

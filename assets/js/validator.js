@@ -92,7 +92,7 @@
 			const serviceId = serviceInput ? serviceInput.value : '';
 			const lat = latInput ? latInput.value : '';
 			const lng = lngInput ? lngInput.value : '';
-			const radius = radiusInput ? parseInt( radiusInput.value, 10 ) : 0;
+			const radius = radiusInput ? parseFloat( radiusInput.value ) : 0;
 
 			if ( ! serviceId ) {
 				errors.service_id = t( 'errService', 'Selecciona un servicio.' );
@@ -102,8 +102,10 @@
 				errors.map_location = t( 'errLocation', 'Selecciona una ubicación en el mapa.' );
 			}
 
-			if ( ! radius || radius < 1 || radius > 20 ) {
-				errors.radius_km = t( 'errRadius', 'El radio debe estar entre 1 y 20 km.' );
+			// El radio va de 100 metros a 1 km: parseFloat, no parseInt, porque
+			// 0.5 km redondeado a entero sería 0 y quedaría siempre inválido.
+			if ( ! radius || radius < 0.1 || radius > 1 ) {
+				errors.radius_km = t( 'errRadius', 'El radio debe estar entre 100 metros y 1 km.' );
 			}
 
 			return { valid: Object.keys( errors ).length === 0, errors };

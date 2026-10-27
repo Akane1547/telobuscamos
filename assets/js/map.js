@@ -104,12 +104,15 @@
 	 * Puramente presentacional — el precio real llega aparte.
 	 */
 	function updateRadiusDisplay() {
-		const km = parseFloat( els.radiusInput.value ) || 1;
-		els.radiusValueEl.textContent = km;
+		// El slider va en metros y el campo que viaja al servidor en km.
+		const metros = parseInt( els.radiusInput.value, 10 ) || 100;
+		const km = metros / 1000;
+
+		els.radiusValueEl.textContent = SF.formatRadius( km );
 		els.radiusHidden.value = km;
 
 		if ( radiusCircle ) {
-			radiusCircle.setRadius( km * 1000 );
+			radiusCircle.setRadius( metros );
 		}
 	}
 
@@ -156,7 +159,7 @@
 						wrapper: currentWrapper,
 						step2: {
 							service_label: selectedServiceLabel(),
-							radius_km: parseInt( els.radiusHidden.value, 10 ) || 0,
+							radius_km: parseFloat( els.radiusHidden.value ) || 0,
 							estimated_price: result.price,
 						},
 					},
@@ -287,7 +290,7 @@
 		marker = window.L.marker( [ center.lat, center.lng ], { draggable: true } ).addTo( mapa );
 
 		radiusCircle = window.L.circle( [ center.lat, center.lng ], {
-			radius: ( parseFloat( els.radiusInput.value ) || 1 ) * 1000,
+			radius: parseInt( els.radiusInput.value, 10 ) || 100,
 			color: '#f5b800',
 			fillColor: '#f5b800',
 			fillOpacity: 0.15,

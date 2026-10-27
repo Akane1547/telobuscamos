@@ -142,7 +142,7 @@ class Assets {
                     'errPhone'     => __( 'Ingresa un teléfono chileno válido (9 dígitos, empieza con 9).', 'simple-form' ),
                     'errService'   => __( 'Selecciona un servicio.', 'simple-form' ),
                     'errLocation'  => __( 'Selecciona una ubicación en el mapa.', 'simple-form' ),
-                    'errRadius'    => __( 'El radio debe estar entre 1 y 20 km.', 'simple-form' ),
+                    'errRadius'    => __( 'El radio debe estar entre 100 metros y 1 km.', 'simple-form' ),
                     'errPayment'   => __( 'Selecciona un medio de pago.', 'simple-form' ),
                     'errGeneric'   => __( 'No se pudo guardar. Revisa los datos e inténtalo de nuevo.', 'simple-form' ),
                 ),

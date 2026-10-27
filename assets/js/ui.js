@@ -158,11 +158,12 @@
 			if ( data.radius_km ) {
 				const slider = form.querySelector( '#pn-map-radius' );
 				const label = form.querySelector( '.map-plugin__radio-value' );
+				// El slider va en metros; lo guardado viene en km.
 				if ( slider ) {
-					slider.value = data.radius_km;
+					slider.value = Math.round( parseFloat( data.radius_km ) * 1000 );
 				}
 				if ( label ) {
-					label.textContent = data.radius_km;
+					label.textContent = window.SimpleForm.formatRadius( data.radius_km );
 				}
 			}
 		},
@@ -176,7 +177,7 @@
 		updateSummary( wrapper, step2 = {} ) {
 			const map = {
 				'#pn-summary-service': step2.service_label,
-				'#pn-summary-radius': step2.radius_km ? `${ step2.radius_km } km` : null,
+				'#pn-summary-radius': step2.radius_km ? window.SimpleForm.formatRadius( step2.radius_km ) : null,
 				'#pn-summary-price': step2.estimated_price != null ? `$${ Math.round( step2.estimated_price ).toLocaleString( 'es-CL' ) }` : null,
 			};
 

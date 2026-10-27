@@ -118,6 +118,20 @@ final class MercadoPagoGateway implements Gateway {
 	}
 
 	/**
+	 * Radio legible: metros hasta 1 km, después km. Espejo del formateador del
+	 * front (assets/js/config.js) para que el pago diga lo mismo que el sitio.
+	 */
+	private static function format_radius( float $km ): string {
+		$metros = (int) round( $km * 1000 );
+
+		if ( $metros < 1000 ) {
+			return $metros . ' m';
+		}
+
+		return (int) round( $metros / 1000 ) . ' km';
+	}
+
+	/**
 	 * Arma el cuerpo de la preferencia.
 	 *
 	 * Está separado de create_payment() para poder probarlo sin red: acá no se
@@ -134,9 +148,9 @@ final class MercadoPagoGateway implements Gateway {
 					'id'          => (string) $order['service_id'],
 					'title'       => (string) $order['service_label'],
 					'description' => sprintf(
-						/* translators: %d es el radio en kilómetros. */
-						__( 'Servicio a %d km', 'simple-form' ),
-						(int) $order['radius_km']
+						/* translators: %s es el radio: metros hasta 1 km, después km. */
+						__( 'Servicio a %s', 'simple-form' ),
+						self::format_radius( (float) $order['radius_km'] )
 					),
 					'quantity'    => 1,
 					'currency_id' => self::CURRENCY,
