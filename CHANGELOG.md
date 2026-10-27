@@ -1,5 +1,20 @@
 # Cambios
 
+## e084158 - Fix: el radio va de 100 m a 1 km y el slider deja de salirse en celular
+
+- **src/Database/Database.php**: `radius_km` pasa de `SMALLINT UNSIGNED` a `DECIMAL(5,2)` y `DB_VERSION` sube a 2. `dbDelta` migra la columna; los pedidos existentes conservan su valor (1.00, 10.00…).
+- **src/Core/Ajax.php**: `read_radius_km()` valida de 0,1 a 1 km (100 m a 1 km) y devuelve `float` (0.0 como centinela de inválido); `compute_price()` acepta radio fraccionario y redondea una sola vez para que el monto siga siendo CLP entero; `save_step3` recalcula con `(float)` y deja de truncar el radio a 0 (antes 0,5 km cobraba solo la base).
+- **src/Database/OrderRepository.php**: `is_step_complete()` acepta radio >= 0,1 y `to_progress()` entrega `radius_km` como float.
+- **src/Payments/MercadoPagoGateway.php**: nuevo `format_radius()` y la descripción de la preferencia queda "Servicio a 500 m" / "Servicio a 1 km" en vez de `%d km` con cast entero.
+- **assets/js/config.js**: `SimpleForm.formatRadius()` centraliza la lectura del radio (metros hasta 1 km, después km).
+- **assets/js/map.js**: el slider trabaja en metros (100 a 1000) y el círculo usa esos metros; el campo oculto y el payload llevan km decimales.
+- **assets/js/{ui,receipt}.js**: el resumen y el recibo pintan el radio con `formatRadius` (antes "0.5 km" crudo).
+- **assets/js/validator.js**: la regla del paso 2 pasa a 0,1–1 con `parseFloat` (con `parseInt`, 0,5 km daba 0 y era siempre inválido).
+- **assets/js/ui.js** (restauración): al reanudar la sesión, el slider se rellena en metros (`radius_km * 1000`).
+- **assets/css/form.css**: en móvil el slider del radio llevaba el pulgar de 26px fuera de su caja; ahora el input va con `min-width: 0` y 14px de margen inline, y el pulgar baja a 24px, así que no se sale ni a 320px.
+- **tests/integration/test-ajax-flow.php**: radio 0,5 km y precios nuevos (10.251 con base 10.001 + 500/km), incluida la vista previa, el monto persistido y el `unit_price` de Mercado Pago.
+- **tests/front/smoke.mjs**: comprueba rango del slider (100–1000, paso 100), etiqueta inicial "100 m", que la barra no se salga de su caja y que el recibo muestre el radio en metros ("300 m").
+
 ## 8d30dbb - Fix: endurecimiento del sitio (etapa fix)
 
 - **deploy/mu-plugins/sf-hardening.php** (nuevo): bloquea XML-RPC antes de procesar la petición (403), retira `/wp/v2/users` a visitantes y desactiva el sitemap de usuarios, redirige `/author/…` a la portada, añade `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` y `Permissions-Policy` (HSTS solo sobre HTTPS), deja CORS únicamente para el origen propio y elimina `X-Powered-By` y el `generator`. Se instala copiándolo a `wp-content/mu-plugins/`.
