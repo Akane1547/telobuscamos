@@ -1,5 +1,10 @@
 # Cambios
 
+## ccf5cf5 - Feat: pantalla de pedidos en wp-admin, solo lectura
+
+- **src/Admin/AdminOrders.php** (nuevo): menú **Pedidos** (`manage_options`, `dashicons-list-view`). Listado paginado de 20 por página con id, fecha en la zona del sitio, cliente, servicio, radio legible (m/km), monto CLP entero, estado traducido e ID de pago externo; el id enlaza al detalle. Detalle con cliente, snapshot de servicio y precios, ubicación, pago (medio, estado, id, `paid_at`) y la tabla de eventos de pago con su clave de idempotencia. Si el pedido no existe, avisa y ofrece volver. No edita montos ni estados: eso sigue siendo exclusivo del webhook.
+- **src/Core/Plugin.php**: instancia `AdminOrders` junto a `AdminServices` y `AdminPayments` dentro de `is_admin()`.
+
 ## 7b72bfd - Test: el admin acepta credenciales de la constante o guardadas cifradas
 
 - **tests/integration/test-admin-screen.php**: la suite exigía `source() === 'constant'` y que la pantalla dijera de qué constante sale. Con las credenciales guardadas desde el panel (`source=stored`, cifradas) la comprobación pasa a ser que la fuente sea segura (`constant` o `stored`) y que el render no imprima el secreto: si la fuente es una constante, verifica los avisos de wp-config.php; si es guardada, verifica el campo enmascarado y vacío. El webhook y el resto de las suites vuelven a verde.
