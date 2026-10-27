@@ -1,5 +1,20 @@
 # Cambios
 
+## cd40b2a - Feat: confirmar el correo, recuperar contraseña y editar el perfil
+
+- **src/Account/Confirmation.php** (nuevo): la cuenta nace pendiente y se activa con un token de un solo uso, guardado hasheado con `wp_salt('auth')` y con vencimiento de 24 h. Si alguien lee la tabla de user meta no puede reconstruir el enlace.
+- **src/Account/Auth.php**: el registro ya no abre sesión. Crea la cuenta pendiente, manda el enlace y responde **siempre el mismo aviso neutro** exista o no el correo (el "ya tienes cuenta" va al correo del dueño, no al navegador). La activación pide **elegir contraseña**: la escrita al registrarse no se usa nunca, así nadie deja una cuenta con su clave sobre un correo ajeno. Un filtro `authenticate` impide que una cuenta pendiente entre, incluso por `wp-login.php`. Se suma la recuperación de contraseña (aviso neutro, sobre `retrieve_password()`) y la edición del perfil (nombre y teléfono, nonce propio, identidad de `get_current_user_id()`; el `user_id` del POST se ignora).
+- **src/Mail/Mailer.php**: `account_confirmation()` y `account_exists()`, respetando `simple_form_email_enabled`.
+- **templates/account-login.php**: cuatro vistas en la misma página —iniciar sesión, crear cuenta, recuperar contraseña y activar la cuenta— más el aviso neutro. **templates/account-profile.php**: formulario de edición; correo y fecha de alta quedan de solo lectura.
+- **assets/css/account.css**: aviso neutro y formulario del perfil.
+- **src/Account/Customer.php**: `wp_update_user()` devuelve `WP_Error` en el fallo, no `false`; `save()` ahora lo trata como error (antes el fallo pasaba por bueno).
+- **tests/integration/test-account.php**: cubre la cuenta pendiente, el token (válido, inventado, reutilizado), el correo de confirmación (con enlace y sin contraseña) y que `wp_authenticate` rechaza la cuenta pendiente.
+- **tests/security/account-security.php**: nueva sección 48.31 — la cuenta pendiente no entra, la contraseña del registro no sirve, la elegida al confirmar sí, token de un solo uso, recuperación con aviso idéntico exista o no la cuenta, edición del perfil sin nonce / con nonce / con teléfono inválido / con XSS / con `user_id` ajeno. Las lecturas del estado limpian la caché del proceso, porque los cambios los hace php-fpm en otra petición. **182 pruebas, 0 fallas.**
+- **tests/integration/test-admin-screen.php**: el redactor de la salida también recorre arrays y la comparación de credenciales guardadas usa un hash, así que el reporte no imprime ni el valor cifrado.
+- **simple-form.php**, **readme.txt**: versión 1.2.0 con su changelog.
+- **docs/DESPLIEGUE.md** (nuevo): puesta en producción —empaquetado sin `tests/`, HTTPS primero, credenciales por constantes, webhook definitivo, cerrar el túnel, y el aviso de que sin correo saliente nadie puede activar la cuenta—.
+- **souls.md**: §4, §13, §15, §46 y la decisión de §48.2 quedan al día con el flujo confirmado por correo.
+
 ## 5ca32b7 - Feat: el pedido queda ligado a la cuenta del cliente
 
 - **src/Database/Database.php**: `DB_VERSION = 3`. `sf_orders` gana `user_id BIGINT UNSIGNED NOT NULL DEFAULT 0` con índice; dbDelta lo agrega en la instalación que ya estaba activa y los pedidos históricos quedan en 0 (se hicieron sin cuenta, no se inventa un dueño).
