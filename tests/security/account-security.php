@@ -22,6 +22,7 @@
 $sf_site_root = (string) getenv( 'SF_SITE_PATH' );
 require ( '' !== $sf_site_root ? rtrim( $sf_site_root, '/' ) : dirname( __DIR__, 5 ) ) . '/wp-load.php';
 
+use SimpleForm\Account\Confirmation;
 use SimpleForm\Account\Customer;
 
 // ---------------------------------------------------------------- configuración
@@ -253,6 +254,128 @@ function register( string $jar, string $name, string $email, string $phone, stri
 }
 
 /**
+ * Confirma la cuenta como si el cliente hubiera abierto el enlace del correo.
+ *
+ * En el sitio real el token viaja en el correo; acá se emite uno nuevo contra
+ * el servidor —`Confirmation::issue()` es exactamente lo que hace el registro—
+ * y se recorre el formulario de activación con la contraseña elegida.
+ *
+ * @param string $jar   Archivo de cookies.
+ * @param string $email Correo de la cuenta pendiente.
+ * @param string $pass  Contraseña que se elige al activar.
+ * @return array Respuesta del POST final.
+ */
+function confirmar( string $jar, string $email, string $pass ): array {
+	$vacio = array( 'status' => 0, 'headers' => array(), 'body' => '', 'location' => '' );
+
+	$user = get_user_by( 'email', $email );
+
+	if ( ! $user instanceof WP_User ) {
+		return $vacio;
+	}
+
+	$token = Confirmation::issue( (int) $user->ID );
+
+	if ( '' === $token ) {
+		return $vacio;
+	}
+
+	$link  = http( 'GET', '/iniciar-sesion/?sf_confirm=' . rawurlencode( $token ), null, $jar );
+	$nonce = nonce_from( $link['body'] );
+
+	return http(
+		'POST',
+		'/iniciar-sesion/',
+		array(
+			'_sf_nonce'        => $nonce,
+			'sf_account_action' => 'confirm',
+			'sf_token'         => $token,
+			'sf_password'      => $pass,
+			'sf_password_2'    => $pass,
+		),
+		$jar
+	);
+}
+
+/**
+ * Pide el enlace de recuperación de contraseña.
+ *
+ * @param string $jar   Archivo de cookies.
+ * @param string $email Correo.
+ * @return array
+ */
+function recuperar( string $jar, string $email ): array {
+	$page  = http( 'GET', '/iniciar-sesion/?form=recuperar', null, $jar );
+	$nonce = nonce_from( $page['body'] );
+
+	return http(
+		'POST',
+		'/iniciar-sesion/',
+		array(
+			'_sf_nonce'        => $nonce,
+			'sf_account_action' => 'recover',
+			'sf_email'         => $email,
+		),
+		$jar
+	);
+}
+
+/**
+ * Cierra la sesión del navegador de pruebas por el enlace real del perfil.
+ *
+ * @param string $jar Archivo de cookies.
+ */
+function cerrar_sesion( string $jar ): void {
+	$perfil = http( 'GET', '/perfil/', null, $jar );
+
+	if ( preg_match( '/href="([^"]*action=logout[^"]*)"/', $perfil['body'], $m ) ) {
+		$salida = html_entity_decode( $m[1], ENT_QUOTES );
+		http( 'GET', (string) wp_parse_url( $salida, PHP_URL_PATH ) . '?' . (string) wp_parse_url( $salida, PHP_URL_QUERY ), null, $jar );
+	}
+}
+
+/**
+ * Envía el formulario de edición del perfil.
+ *
+ * @param string      $jar       Archivo de cookies.
+ * @param array       $campos    Campos a enviar.
+ * @param bool        $con_nonce Si se manda el nonce del formulario.
+ * @return array
+ */
+function actualizar_perfil( string $jar, array $campos, bool $con_nonce = true ): array {
+	$page  = http( 'GET', '/perfil/', null, $jar );
+	$nonce = $con_nonce ? nonce_from( $page['body'] ) : '';
+
+	return http(
+		'POST',
+		'/perfil/',
+		array_merge(
+			array(
+				'_sf_nonce'        => $nonce,
+				'sf_account_action' => 'profile',
+			),
+			$campos
+		),
+		$jar
+	);
+}
+
+/**
+ * Datos del cliente leídos sin caché del proceso.
+ *
+ * Los cambios de esta suite los hace php-fpm en otra petición, así que el
+ * objeto de usuario que este proceso tenga en memoria puede estar viejo.
+ *
+ * @param int $user_id Cuenta.
+ * @return array{name:string,email:string,phone:string}
+ */
+function cliente( int $user_id ): array {
+	clean_user_cache( $user_id );
+
+	return Customer::data( $user_id );
+}
+
+/**
  * Dice si una respuesta de formulario trae un mensaje de error.
  *
  * @param string $body HTML.
@@ -260,6 +383,20 @@ function register( string $jar, string $name, string $email, string $phone, stri
  */
 function alerta( string $body ): string {
 	if ( ! preg_match( '/sf-account__alert[^>]*>(.*?)<\/p>/s', $body, $m ) ) {
+		return '';
+	}
+
+	return trim( preg_replace( '/\s+/', ' ', wp_strip_all_tags( $m[1] ) ) );
+}
+
+/**
+ * Aviso neutro ("revisa tu correo") de una respuesta del formulario.
+ *
+ * @param string $body HTML.
+ * @return string
+ */
+function aviso( string $body ): string {
+	if ( ! preg_match( '/sf-account__notice[^>]*>(.*?)<\/p>/s', $body, $m ) ) {
 		return '';
 	}
 
@@ -337,10 +474,17 @@ try {
 	reset_limite( 'account_login' );
 
 	$r = register( $sf_jar_a, $SF_A_NAME, $SF_A_MAIL, $SF_A_PHONE, $SF_A_PASS );
-	check( 'cuenta A creada (302 a /perfil)', $r['status'] . ' ' . wp_parse_url( $r['location'], PHP_URL_PATH ), '302 /perfil/' );
+	check( 'A: el registro no abre sesión, pide confirmar el correo', $r['status'], 200 );
+	check( 'A: con su aviso neutro', '' !== aviso( $r['body'] ), true );
+
+	$r = confirmar( $sf_jar_a, $SF_A_MAIL, $SF_A_PASS );
+	check( 'A confirma y entra (302 a /perfil)', $r['status'] . ' ' . wp_parse_url( $r['location'], PHP_URL_PATH ), '302 /perfil/' );
 
 	$r = register( $sf_jar_b, $SF_B_NAME, $SF_B_MAIL, $SF_B_PHONE, $SF_B_PASS );
-	check( 'cuenta B creada (302 a /perfil)', $r['status'] . ' ' . wp_parse_url( $r['location'], PHP_URL_PATH ), '302 /perfil/' );
+	check( 'B: el registro no abre sesión', $r['status'], 200 );
+
+	$r = confirmar( $sf_jar_b, $SF_B_MAIL, $SF_B_PASS );
+	check( 'B confirma y entra (302 a /perfil)', $r['status'] . ' ' . wp_parse_url( $r['location'], PHP_URL_PATH ), '302 /perfil/' );
 
 	$sf_a = get_user_by( 'email', $SF_A_MAIL );
 	$sf_b = get_user_by( 'email', $SF_B_MAIL );
@@ -447,12 +591,14 @@ try {
 	);
 
 	reset_limite( 'account_register' );
-	$dup = register( $SF_TMP . '/t4.txt', 'Otro', $SF_A_MAIL, '933333333', $SF_A_PASS );
-	check(
-		'el registro SÍ revela que el correo ya existe (decisión del sitio)',
-		alerta( $dup['body'] ),
-		'Ya existe una cuenta con este correo. Inicia sesión.'
-	);
+
+	$dup   = register( $SF_TMP . '/t4.txt', 'Otro', $SF_A_MAIL, '933333333', $SF_A_PASS );
+	$nuevo = register( $SF_TMP . '/t5.txt', 'Nuevo', 'sec-nuevo-' . $sf_rand . '@example.com', '933333334', $SF_A_PASS );
+
+	check( 'correo existente: aviso neutro, no "ya existe"', '' !== aviso( $dup['body'] ), true );
+	check( 'y el aviso es el mismo que con un correo nuevo', aviso( $dup['body'] ), aviso( $nuevo['body'] ) );
+	check( 'mismo código HTTP', $dup['status'], $nuevo['status'] );
+	check( 'la respuesta del correo existente no dice "ya existe"', false !== stripos( $dup['body'], 'ya existe' ), false );
 
 	// ------------------------------------------------- 48.3 / 48.4 user_id e IDOR
 
@@ -670,6 +816,10 @@ try {
 		$guardado = Customer::name( (int) $creado->ID );
 		check( "payload {$i}: se guarda sin etiquetas", false === strpos( $guardado, '<' ) && false === strpos( $guardado, '>' ), true );
 
+		// La cuenta nace pendiente: se activa para poder ver el perfil.
+		$confirmacion = confirmar( $jar, $mail, $SF_A_PASS );
+		check( "payload {$i}: la cuenta se confirma", $confirmacion['status'], 302 );
+
 		$r = http( 'GET', '/perfil/', null, $jar );
 		$ejecutable = array( '<script>alert', 'onerror=alert', 'onload=alert', '<img src=x' );
 		$hay_ejecutable = false;
@@ -819,6 +969,8 @@ try {
 
 	if ( $u instanceof WP_User ) {
 		check( 'y la cuenta se creó sin romper el perfil', Customer::name( (int) $u->ID ) !== '', true );
+
+		confirmar( $SF_TMP . '/nom2.txt', 'sec-nom2-' . $sf_rand . '@example.com', $SF_A_PASS );
 		$perfil = http( 'GET', '/perfil/', null, $SF_TMP . '/nom2.txt' );
 		check( 'el perfil con un nombre larguísimo responde 200', $perfil['status'], 200 );
 	}
@@ -1041,13 +1193,141 @@ try {
 	);
 	check( 'el pedido quedó ligado a la cuenta autenticada, no a la enviada', null !== $fila ? (int) $fila['user_id'] : -1, $SF_A_ID );
 
-	check( 'pero la cuenta de A no cambió de nombre', Customer::name( $SF_A_ID ), $SF_A_NAME );
-	check( 'ni de correo', Customer::email( $SF_A_ID ), $SF_A_MAIL );
-	check( 'ni de teléfono', Customer::phone( $SF_A_ID ), $SF_A_PHONE );
+	$sf_a_ahora = cliente( $SF_A_ID );
+	check( 'pero la cuenta de A no cambió de nombre', $sf_a_ahora['name'], $SF_A_NAME );
+	check( 'ni de correo', $sf_a_ahora['email'], $SF_A_MAIL );
+	check( 'ni de teléfono', $sf_a_ahora['phone'], $SF_A_PHONE );
 
 	check( 'la respuesta AJAX no trae la contraseña', false === stripos( $r['body'], 'user_pass' ) && false === stripos( $r['body'], 'password' ), true );
 
 	// ------------------------------------------- 48.19 / 48.20 aislamiento A/B
+
+	// ------------------------------- 48.31 confirmación, contraseña y perfil
+
+	grupo( '48.31 Confirmación de correo, contraseña y edición del perfil' );
+
+	reset_limite( 'account_register' );
+	reset_limite( 'account_login' );
+	reset_limite( 'account_confirm' );
+	reset_limite( 'account_recover' );
+
+	$mail_pend = 'sec-pend-' . $sf_rand . '@example.com';
+	$jar_pend  = $SF_TMP . '/pend-' . $sf_rand . '.txt';
+
+	register( $jar_pend, 'Cuenta Pendiente', $mail_pend, '900000010', 'ClaveDelRegistro1' );
+
+	$r = login( $jar_pend, $mail_pend, 'ClaveDelRegistro1' );
+	check( 'la cuenta pendiente no puede iniciar sesión', false !== strpos( $r['body'], 'Confirma tu correo' ), true );
+	check( 'y no quedó con sesión abierta', http( 'GET', '/perfil/', null, $jar_pend )['status'], 302 );
+
+	// Pre-hijacking: quien escribió el correo ajeno eligió esta contraseña; la
+	// que vale es la que elige quien abre el enlace.
+	$r = confirmar( $jar_pend, $mail_pend, 'ClaveElegida456' );
+	check( 'confirma con su propia contraseña y entra', $r['status'], 302 );
+
+	cerrar_sesion( $jar_pend );
+
+	reset_limite( 'account_login' );
+	$r = login( $jar_pend, $mail_pend, 'ClaveDelRegistro1' );
+	check( 'la contraseña escrita al registrarse ya no sirve', $r['status'], 200 );
+
+	$r = login( $jar_pend, $mail_pend, 'ClaveElegida456' );
+	check( 'la contraseña elegida al confirmar sí sirve', $r['status'], 302 );
+
+	cerrar_sesion( $jar_pend );
+
+	// Token inventado.
+	$r = http( 'GET', '/iniciar-sesion/?sf_confirm=tokeninventado123', null, $SF_TMP . '/tok-' . $sf_rand . '.txt' );
+	check( 'un token inventado no activa nada', false !== strpos( $r['body'], 'no sirve' ), true );
+
+	// Token de un solo uso.
+	$jar_uso = $SF_TMP . '/uso-' . $sf_rand . '.txt';
+	$mail_uso = 'sec-uso-' . $sf_rand . '@example.com';
+	reset_limite( 'account_register' );
+	register( $jar_uso, 'Un Solo Uso', $mail_uso, '900000011', 'ClaveUso123' );
+
+	$user_uso = get_user_by( 'email', $mail_uso );
+	$token_uso = $user_uso instanceof WP_User ? Confirmation::issue( (int) $user_uso->ID ) : '';
+
+	$link = http( 'GET', '/iniciar-sesion/?sf_confirm=' . rawurlencode( $token_uso ), null, $jar_uso );
+	$nonce = nonce_from( $link['body'] );
+
+	$r = http(
+		'POST',
+		'/iniciar-sesion/',
+		array(
+			'_sf_nonce'        => $nonce,
+			'sf_account_action' => 'confirm',
+			'sf_token'         => $token_uso,
+			'sf_password'      => 'ClaveUso123',
+			'sf_password_2'    => 'ClaveUso123',
+		),
+		$jar_uso
+	);
+	check( 'el token válido activa la cuenta', $r['status'], 302 );
+
+	cerrar_sesion( $jar_uso );
+
+	$otro = http( 'GET', '/iniciar-sesion/', null, $jar_uso );
+	$r = http(
+		'POST',
+		'/iniciar-sesion/',
+		array(
+			'_sf_nonce'        => nonce_from( $otro['body'] ),
+			'sf_account_action' => 'confirm',
+			'sf_token'         => $token_uso,
+			'sf_password'      => 'OtraClave789',
+			'sf_password_2'    => 'OtraClave789',
+		),
+		$jar_uso
+	);
+	check( 'el mismo token no se puede usar dos veces', false !== strpos( $r['body'], 'no sirve' ), true );
+
+	// Recuperar contraseña: el aviso no depende de si la cuenta existe.
+	$r_existe  = recuperar( $SF_TMP . '/rec1-' . $sf_rand . '.txt', $SF_A_MAIL );
+	$r_noexiste = recuperar( $SF_TMP . '/rec2-' . $sf_rand . '.txt', 'sec-nadie-' . $sf_rand . '@example.com' );
+
+	check( 'recuperación: aviso idéntico exista o no la cuenta', aviso( $r_existe['body'] ), aviso( $r_noexiste['body'] ) );
+	check( 'y tampoco dice "ya existe"', false !== stripos( $r_existe['body'], 'ya existe' ), false );
+
+	// Edición del perfil.
+	reset_limite( 'account_login' );
+	$jar_perfil = $SF_TMP . '/perfil-' . $sf_rand . '.txt';
+	login( $jar_perfil, $SF_A_MAIL, $SF_A_PASS );
+
+	$r = actualizar_perfil( $jar_perfil, array( 'sf_name' => 'Sin Nonce', 'sf_phone' => '9 5555 1111' ), false );
+	check( 'editar el perfil sin nonce: rechazado', alerta( $r['body'] ), 'La página expiró. Recárgala y vuelve a intentarlo.' );
+	check( 'y el nombre no cambió', Customer::name( $SF_A_ID ), $SF_A_NAME );
+
+	$r = actualizar_perfil(
+		$jar_perfil,
+		array(
+			'sf_name'  => 'Nombre Editado',
+			'sf_phone' => '9 5555 2222',
+			'sf_email' => 'sec-robo-' . $sf_rand . '@example.com',
+			'user_id'  => (string) $SF_B_ID,
+		)
+	);
+	$sf_perfil_datos = cliente( $SF_A_ID );
+	check( 'editar el perfil con nonce: guarda', $sf_perfil_datos['name'], 'Nombre Editado' );
+	check( 'y el teléfono normalizado', $sf_perfil_datos['phone'], '955552222' );
+	check( 'el correo no se puede cambiar por POST', $sf_perfil_datos['email'], $SF_A_MAIL );
+	check( 'el user_id del POST se ignora (B intacto)', cliente( $SF_B_ID )['name'], $SF_B_NAME );
+
+	$r = actualizar_perfil( $jar_perfil, array( 'sf_name' => 'Nombre Editado', 'sf_phone' => '12345678' ) );
+	check( 'teléfono inválido al editar: rechazado', alerta( $r['body'] ), 'El teléfono debe tener 9 dígitos y empezar con 9 (celular chileno).' );
+	check( 'y el teléfono bueno sigue guardado', cliente( $SF_A_ID )['phone'], '955552222' );
+
+	$r = actualizar_perfil( $jar_perfil, array( 'sf_name' => '<script>alert(1)</script>Otro', 'sf_phone' => '9 5555 3333' ) );
+	$perfil_editado = http( 'GET', '/perfil/', null, $jar_perfil );
+	check( 'un payload en el nombre editado no se ejecuta', false !== strpos( $perfil_editado['body'], '<script>alert(1)</script>' ), false );
+	check( 'y se guarda sin etiquetas', false !== strpos( cliente( $SF_A_ID )['name'], '<' ), false );
+
+	cerrar_sesion( $jar_perfil );
+
+	// Se dejan los datos de A como estaban: las pruebas que siguen comparan
+	// contra su teléfono.
+	Customer::save( $SF_A_ID, $SF_A_NAME, $SF_A_PHONE );
 
 	grupo( '48.19 / 48.20 Aislamiento A → B y B → A' );
 

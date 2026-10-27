@@ -15,10 +15,12 @@ define( 'WP_USE_THEMES', false );
 $sf_site_root = (string) getenv( 'SF_SITE_PATH' );
 require ( '' !== $sf_site_root ? rtrim( $sf_site_root, '/' ) : dirname( __DIR__, 5 ) ) . '/wp-load.php';
 
+use SimpleForm\Account\Confirmation;
 use SimpleForm\Account\Customer;
 use SimpleForm\Account\Pages;
 use SimpleForm\Database\Database;
 use SimpleForm\Database\OrderRepository;
+use SimpleForm\Mail\Mailer;
 
 $sf_fallos = 0;
 
@@ -154,6 +156,44 @@ if ( null !== $sf_perfil ) {
 	$sf_perfil_url = (string) get_permalink( $sf_perfil );
 	check( 'la URL del perfil es la de la página', Pages::profile_url(), $sf_perfil_url );
 }
+
+// --- Confirmación de correo (doble opt-in) -----------------------------------
+
+$sf_token = Confirmation::issue( $sf_id );
+
+check( 'la cuenta recién creada queda pendiente', Confirmation::is_pending( $sf_id ), true );
+check( 'el token del correo resuelve a la cuenta', Confirmation::verify( $sf_token ), $sf_id );
+check( 'un token inventado no resuelve', Confirmation::verify( 'inventado' ), 0 );
+
+// El filtro de autenticación rechaza una cuenta pendiente, también fuera de
+// nuestro formulario (wp-login.php).
+$sf_auth = wp_authenticate( (string) get_userdata( $sf_id )->user_login, $sf_pass );
+check( 'una cuenta pendiente no se autentica', is_wp_error( $sf_auth ), true );
+
+// El correo de confirmación sale con el enlace y sin la contraseña.
+$sf_enviados = array();
+$sf_captura  = function ( $return, $atts ) use ( &$sf_enviados ) {
+	$sf_enviados[] = $atts;
+
+	return true;
+};
+add_filter( 'pre_wp_mail', $sf_captura, 10, 2 );
+
+Mailer::account_confirmation( $sf_email, 'http://telobuscamos.local/iniciar-sesion/?sf_confirm=ABC', 'Cliente Integración' );
+
+remove_filter( 'pre_wp_mail', $sf_captura, 10 );
+
+check( 'el correo de confirmación se envió', count( $sf_enviados ), 1 );
+check( 'y lleva el enlace', count( $sf_enviados ) > 0 ? ( false !== strpos( (string) $sf_enviados[0]['message'], 'sf_confirm=ABC' ) ) : null, true );
+check( 'y no lleva la contraseña', count( $sf_enviados ) > 0 ? ( false !== strpos( (string) $sf_enviados[0]['message'], $sf_pass ) ) : null, false );
+
+Confirmation::activate( $sf_id );
+
+check( 'después de confirmar ya no está pendiente', Confirmation::is_pending( $sf_id ), false );
+check( 'y el token no se puede reutilizar', Confirmation::verify( $sf_token ), 0 );
+
+$sf_auth = wp_authenticate( (string) get_userdata( $sf_id )->user_login, $sf_pass );
+check( 'una cuenta confirmada sí se autentica', $sf_auth instanceof WP_User, true );
 
 // --- Pedido ligado a la cuenta (souls.md §37) --------------------------------
 

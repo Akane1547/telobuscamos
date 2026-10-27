@@ -47,14 +47,27 @@ function check( $label, $actual, $expected ) {
 	}
 
 	// Nunca imprimir un valor largo: si un día una aserción compara una
-	// credencial, la salida no puede acabar con el secreto dentro.
-	$muestra = static function ( $v ) {
+	// credencial —o un array de credenciales cifradas— la salida no puede
+	// acabar con el secreto dentro.
+	$limpiar = static function ( $v ) use ( &$limpiar ) {
 		if ( is_string( $v ) && strlen( $v ) > 24 ) {
 			return '[cadena de ' . strlen( $v ) . ' caracteres, no se imprime]';
 		}
 
+		if ( is_array( $v ) ) {
+			$salida = array();
+
+			foreach ( $v as $clave => $valor ) {
+				$salida[ $clave ] = $limpiar( $valor );
+			}
+
+			return var_export( $salida, true );
+		}
+
 		return var_export( $v, true );
 	};
+
+	$muestra = $limpiar;
 
 	printf( "%s %-56s esperado=%-40s obtenido=%s\n", $ok ? 'PASS' : 'FAIL', $label, $muestra( $expected ), $muestra( $actual ) );
 }
@@ -259,7 +272,13 @@ if ( null === $prev_credentials ) {
 	update_option( 'simple_form_payment_credentials', $prev_credentials );
 }
 check( 'medios restaurados', get_option( 'simple_form_payment_methods', null ), $prev_methods );
-check( 'credenciales restauradas', get_option( 'simple_form_payment_credentials', null ), $prev_credentials );
+// Se compara el hash del JSON, no los valores: lo guardado está cifrado, pero
+// imprimirlo lo sacaría del sitio sin necesidad.
+check(
+	'credenciales restauradas',
+	md5( (string) wp_json_encode( get_option( 'simple_form_payment_credentials', null ) ) ),
+	md5( (string) wp_json_encode( $prev_credentials ) )
+);
 
 printf( "\n%s\n", 0 === $failures ? 'TODO OK' : "FALLAS: {$failures}" );
 exit( $failures > 0 ? 1 : 0 );

@@ -56,6 +56,80 @@ final class Mailer {
 	}
 
 	/**
+	 * Correo de confirmación de cuenta.
+	 *
+	 * Lleva el enlace que activa la cuenta. Sin ese enlace nadie puede entrar:
+	 * la cuenta queda pendiente hasta que se abra.
+	 *
+	 * @param string $email Correo de la cuenta.
+	 * @param string $link  Enlace de confirmación.
+	 * @param string $nombre Nombre escrito al registrarse (puede ir vacío).
+	 * @return bool true si wp_mail aceptó el envío.
+	 */
+	public static function account_confirmation( string $email, string $link, string $nombre = '' ): bool {
+		if ( ! apply_filters( self::FILTER_ENABLED, true ) ) {
+			return false;
+		}
+
+		if ( '' === $email || false === filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
+			return false;
+		}
+
+		$lineas   = array();
+		$lineas[] = '' !== $nombre ? sprintf( __( 'Hola %s:', 'simple-form' ), $nombre ) : __( 'Hola:', 'simple-form' );
+		$lineas[] = '';
+		$lineas[] = __( 'Para activar tu cuenta, abre este enlace:', 'simple-form' );
+		$lineas[] = $link;
+		$lineas[] = '';
+		$lineas[] = __( 'El enlace vale 24 horas. Si no creaste esta cuenta, ignora este correo: sin abrir el enlace no queda activa.', 'simple-form' );
+
+		return wp_mail(
+			$email,
+			__( 'Confirma tu cuenta', 'simple-form' ),
+			implode( "\n", $lineas ),
+			self::headers()
+		);
+	}
+
+	/**
+	 * Aviso a quien ya tiene cuenta, cuando alguien intenta registrarse con su
+	 * correo.
+	 *
+	 * El navegador recibe siempre la misma respuesta, así que este correo es el
+	 * único que se enterá de que hubo un intento: sirve para que la persona no
+	 * quede con la duda y para que note si no fue ella.
+	 *
+	 * @param string $email Correo de la cuenta existente.
+	 * @return bool true si wp_mail aceptó el envío.
+	 */
+	public static function account_exists( string $email ): bool {
+		if ( ! apply_filters( self::FILTER_ENABLED, true ) ) {
+			return false;
+		}
+
+		if ( '' === $email || false === filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
+			return false;
+		}
+
+		$lineas   = array();
+		$lineas[] = __( 'Hola:', 'simple-form' );
+		$lineas[] = '';
+		$lineas[] = __( 'Alguien intentó crear una cuenta con este correo, y ya tienes una.', 'simple-form' );
+		$lineas[] = __( 'Si fuiste tú, entra con tu contraseña de siempre:', 'simple-form' );
+		$lineas[] = \SimpleForm\Account\Pages::login_url();
+		$lineas[] = '';
+		$lineas[] = __( 'Si olvidaste la contraseña, en esa página hay un enlace para recuperarla.', 'simple-form' );
+		$lineas[] = __( 'Si no fuiste tú, no tienes que hacer nada: no se creó ninguna cuenta nueva.', 'simple-form' );
+
+		return wp_mail(
+			$email,
+			__( 'Ya tienes cuenta en TeLoBuscamos', 'simple-form' ),
+			implode( "\n", $lineas ),
+			self::headers()
+		);
+	}
+
+	/**
 	 * Correo al comprador, según el desenlace.
 	 *
 	 * @param array  $order

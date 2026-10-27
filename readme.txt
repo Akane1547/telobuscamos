@@ -4,7 +4,7 @@ Tags: formulario, pago, mercadopago, servicios, mapa
 Requires at least: 6.0
 Requires PHP: 7.4
 Tested up to: 6.7
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,12 @@ No. Cada pedido guarda un snapshot de la etiqueta, el precio base y el precio po
 Porque todavía no se configuró ninguno en *Pedidos → Pagos*. Hasta que no haya un medio habilitado, el formulario no ofrece ninguno.
 
 == Changelog ==
+
+= 1.2.0 =
+* **Confirmación por correo al registrarse**: la cuenta queda pendiente y solo se activa al abrir el enlace del correo y elegir la contraseña. Así nadie puede quedarse con una cuenta ajena escribiendo su correo, y la respuesta del formulario ya no delata si el correo existe.
+* **Recuperar contraseña** desde la misma página (`/iniciar-sesion?form=recuperar`), con aviso neutro: no dice si la cuenta existe.
+* **Perfil editable**: nombre y teléfono se cambian desde `/perfil`, con nonce. El correo no se edita ahí: es el identificador de la cuenta.
+* Endurecido el registro: el aviso es el mismo exista o no la cuenta, y el correo del dueño recibe el aviso cuando alguien intenta registrarse con su dirección.
 
 = 1.1.0 =
 * Cuenta del cliente: /iniciar-sesion (login y registro en la misma página), /perfil de solo lectura, cierre de sesión con WordPress y navegación que cambia "Iniciar sesión" por "Perfil". El nombre, el correo y el teléfono quedan en la cuenta de WordPress (el teléfono en la meta `simple_form_phone`).

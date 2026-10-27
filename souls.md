@@ -137,6 +137,12 @@ El nombre y teléfono deben persistir como información del cliente asociada a e
 
 La información debe poder recuperarse posteriormente desde cualquier parte autorizada del sitio.
 
+**Implementado (1.2.0):** el registro no abre sesión. Crea la cuenta en estado
+pendiente y manda un enlace al correo; la cuenta se activa al abrirlo y elegir la
+contraseña. La contraseña escrita en el formulario no se usa nunca: vale la que
+elige quien abre el enlace, para que nadie pueda dejar una cuenta con su propia
+clave sobre un correo ajeno.
+
 ---
 
 ## 5. Fuente de verdad del cliente
@@ -442,7 +448,9 @@ crear usuario WordPress
    ↓
 guardar teléfono
    ↓
-iniciar sesión si corresponde al flujo aprobado
+mandar el enlace de confirmación al correo
+   ↓
+cliente abre el enlace y elige su contraseña
    ↓
 cliente autenticado
    ↓
@@ -506,7 +514,7 @@ buscar usuario
 
 ## 15. Edición del perfil
 
-La primera implementación debe priorizar:
+La primera implementación priorizó:
 
 ```text
 visualización
@@ -518,7 +526,11 @@ antes que:
 edición
 ```
 
-No implementar edición de nombre, correo o teléfono si no ha sido solicitada explícitamente.
+**Implementado (1.2.0):** se editan nombre y teléfono desde `/perfil`, con nonce
+propio (`simple_form_profile`), validación y saneado en el servidor, y la
+identidad tomada de `get_current_user_id()` — el `user_id` que venga en el POST
+se ignora. El correo no se edita desde ahí: es el identificador de la cuenta y
+cambiarlo exige confirmar la dirección nueva (queda para cuando se pida).
 
 Si posteriormente se agrega edición:
 
@@ -1466,6 +1478,10 @@ muestra la información del usuario autenticado.
 
 Cerrar sesión funciona mediante WordPress.
 
+El registro confirma el correo antes de activar la cuenta, la contraseña se
+recupera desde `/iniciar-sesion?form=recuperar`, y el perfil permite editar
+nombre y teléfono.
+
 `simple-form` puede obtener automáticamente:
 
 ```text
@@ -1593,7 +1609,14 @@ si el flujo concreto permite utilizar esa respuesta para enumerar cuentas.
 
 La decisión final debe respetar el comportamiento definido para el sitio.
 
-**Decisión del sitio (implementada en 1.1.0):** el login no revela nada —mismo mensaje, mismo código y mismo cuerpo para correo existente e inexistente—, pero el registro **sí** dice "Ya existe una cuenta con este correo". La alternativa no reveladora exige confirmar el correo antes de poder entrar (doble opt-in), y eso contradice la decisión de producto de dejar al cliente con la sesión abierta y su perfil cargado al registrarse. Se acepta el riesgo, medido y acotado: 5 registros por minuto y por IP (`RateLimit`), y cada intento cuenta para el mismo contador que los registros válidos. Pruebas: `tests/security/account-security.php` compara las dos respuestas del login (mensaje, código y cuerpo normalizado) y verifica el mensaje del registro.
+**Decisión del sitio (1.1.0 → cerrada en 1.2.0):** en 1.1.0 el login no
+revelaba nada y el registro sí decía "Ya existe una cuenta con este correo".
+Desde 1.2.0 **ninguno de los dos revela**: el registro responde siempre el mismo
+aviso neutro ("si los datos están bien, te enviamos un correo para activar la
+cuenta") exista o no la cuenta, y el aviso de "ya tienes cuenta" viaja al correo
+del dueño, no al navegador. El costo es que la cuenta ya no entra directo: se
+activa confirmando el correo y eligiendo la contraseña (doble opt-in). El límite
+de 5 registros por minuto y por IP sigue en pie. Pruebas: `tests/security/account-security.php` compara las dos respuestas del login (mensaje, código y cuerpo normalizado) y verifica el mensaje del registro.
 
 ---
 

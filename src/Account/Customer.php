@@ -142,7 +142,10 @@ final class Customer {
 			return false;
 		}
 
-		if ( false === wp_update_user( array( 'ID' => $user_id, 'first_name' => $name ) ) ) {
+		// wp_update_user() devuelve el id, o WP_Error si falló (no false).
+		$updated = wp_update_user( array( 'ID' => $user_id, 'first_name' => $name ) );
+
+		if ( is_wp_error( $updated ) || false === $updated ) {
 			return false;
 		}
 

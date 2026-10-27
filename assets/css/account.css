@@ -115,6 +115,18 @@
 	color: #7a1414;
 }
 
+/* Aviso neutro: "revisa tu correo". No es un error, así que no va en rojo. */
+.sf-account__notice {
+	margin: 0 0 20px;
+	padding: 12px 14px;
+	border-left: 4px solid #1d7a3c;
+	background: rgba(29, 122, 60, 0.09);
+	font-size: 15px;
+	font-weight: 500;
+	line-height: 1.4;
+	color: #155c2c;
+}
+
 .sf-account__form {
 	display: grid;
 	gap: 18px;
@@ -238,6 +250,18 @@
 .sf-account--profile {
 	padding-block: 64px;
 	background: var(--sf-crema);
+}
+
+.sf-profile__form {
+	margin-bottom: 32px;
+	padding-bottom: 28px;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.sf-profile__save {
+	justify-self: start;
+	padding: 13px 32px;
+	font-size: 17px;
 }
 
 .sf-profile {
