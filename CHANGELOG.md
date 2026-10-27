@@ -1,5 +1,17 @@
 # Cambios
 
+## 5ca32b7 - Feat: el pedido queda ligado a la cuenta del cliente
+
+- **src/Database/Database.php**: `DB_VERSION = 3`. `sf_orders` gana `user_id BIGINT UNSIGNED NOT NULL DEFAULT 0` con índice; dbDelta lo agrega en la instalación que ya estaba activa y los pedidos históricos quedan en 0 (se hicieron sin cuenta, no se inventa un dueño).
+- **src/Database/OrderRepository.php**: `create_draft()` guarda `get_current_user_id()`, o sea el servidor y nunca el navegador; el invitado queda en 0. Los datos de contacto siguen siendo el snapshot del pedido (souls.md §7): editar el formulario no toca la cuenta.
+- **src/Admin/AdminOrders.php**: el detalle del pedido muestra la cuenta dueña ("Cuenta #12 — correo", "Invitado (sin cuenta)" o "Cuenta #N (ya no existe)"), separada del snapshot de contacto.
+- **simple-form.php** y **readme.txt**: versión 1.1.0, con el changelog de la entrega. La versión también es la del cache-busting de `account.css` y del JS del formulario, así que los assets nuevos no quedan viejos en el navegador del cliente.
+- **souls.md**: quedan escritas las decisiones que dependían del producto —§48.2 (el login no revela, el registro sí, y por qué se acepta con su límite), §48.9 (qué hace el saneado con un XSS en el nombre) y §48.15 (límite por acción + IP, que frena también la contraseña correcta, y que detrás de un proxy la IP es la del proxy)—.
+- **tests/integration/test-account.php**: el pedido creado por una cuenta guarda su `user_id`; el de un invitado queda en 0; los dos pedidos de prueba se borran y se comprueba que no quedan.
+- **tests/security/account-security.php**: en 48.18 la sesión es la de A y el POST de `save_step1` declara el `user_id` de B: el pedido guardado sigue siendo de A.
+
+Verificado: `composer test:all` exit 0 (170 unitarias, integración 7 OK + 1 saltada), `composer test:security` 153 pruebas / 0 fallas, `test:front` TODO OK. La migración se aplicó en el sitio (`DB_VERSION` guardada = 3, columna e índice presentes).
+
 ## 51cb55b - Fix: hallazgos de las pruebas de seguridad de la cuenta
 
 - **src/Account/Auth.php**: `get_user_by()` devuelve `false`, no `null`. El ternario del login comparaba contra `null`, así que con un correo inexistente hacía `$user->user_login` sobre `false` y el warning de PHP salía impreso en el HTML: la respuesta de un correo que no existe medía distinto que la de uno que sí. Enumeración de cuentas por diferencia de contenido, detectada por la propia prueba. Ahora se comprueba `instanceof WP_User`.
