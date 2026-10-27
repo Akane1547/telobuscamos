@@ -14,3 +14,6 @@ phpunit.xml.dist
 # Documentación interna del proceso: no va en el zip público.
 AUDITORIA.md
 FIX.md
+
+# Documento del proyecto: contrato interno, no va en el zip público.
+souls.md

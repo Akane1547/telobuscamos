@@ -55,10 +55,12 @@ class Plugin {
         new Ajax();
         new Shortcode( $assets );
 
-        // Cuenta del cliente: páginas /iniciar-sesion y /perfil. Solo en el
-        // front; en wp-admin no hay formularios que atender.
+        // Cuenta del cliente: páginas /iniciar-sesion y /perfil. Pages también
+        // en wp-admin, porque es quien saca al cliente del escritorio de
+        // WordPress; los formularios (Auth) solo se atienden en el front.
+        new AccountPages();
+
         if ( ! is_admin() ) {
-            new AccountPages();
             new AccountAuth();
         }
 

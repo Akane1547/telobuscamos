@@ -198,12 +198,15 @@ final class Auth {
 		}
 
 		// WordPress autentica con el login del usuario, no con el correo: se
-		// traduce antes de llamar a wp_signon().
+		// traduce antes de llamar a wp_signon(). Ojo: get_user_by() devuelve
+		// false cuando no hay usuario, no null; comparar contra null dejaba
+		// pasar un $user->user_login sobre false (warning en el HTML, que
+		// además delata si el correo existe).
 		$user = get_user_by( 'email', $email );
 
 		$signed = wp_signon(
 			array(
-				'user_login'    => null === $user ? $email : $user->user_login,
+				'user_login'    => $user instanceof \WP_User ? $user->user_login : $email,
 				'user_password' => $password,
 				'remember'      => true,
 			),

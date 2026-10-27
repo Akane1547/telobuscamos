@@ -41,6 +41,32 @@ final class Pages {
 		add_filter( 'wp_setup_nav_menu_item', array( $this, 'nav_item' ) );
 		add_filter( 'show_admin_bar', array( $this, 'admin_bar' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'assets' ) );
+		add_action( 'admin_init', array( $this, 'guard_admin' ) );
+	}
+
+	/**
+	 * El cliente no entra al escritorio de WordPress.
+	 *
+	 * Un suscriptor tiene la capacidad `read` y WordPress le muestra un
+	 * escritorio vacío; su sitio es /perfil. Se deja pasar a quien puede
+	 * escribir contenido, y no se toca AJAX ni REST, que es por donde el
+	 * formulario y la pasarela hablan con el servidor.
+	 */
+	public function guard_admin(): void {
+		if ( wp_doing_ajax() ) {
+			return;
+		}
+
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+			return;
+		}
+
+		if ( current_user_can( 'edit_posts' ) ) {
+			return;
+		}
+
+		wp_safe_redirect( self::profile_url() );
+		exit;
 	}
 
 	/**
