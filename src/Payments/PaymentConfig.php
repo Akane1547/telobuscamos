@@ -6,11 +6,23 @@
  * resolución de credenciales:
  *
  *   1. las constantes de wp-config.php, que mandan siempre (§16);
- *   2. el valor cifrado que se guarda desde el admin.
+ *   2. el valor cifrado que se guarda desde el admin, **del modo activo**.
  *
- * Lo leen la pantalla de pagos, el shortcode (radios del Paso 3) y los
- * endpoints (validar el medio elegido); en la Fase 4 lo leerá la pasarela para
- * cobrar.
+ * Cada pasarela guarda un juego de credenciales por modo:
+ *
+ *   simple_form_payment_credentials = array(
+ *       'mercado_pago' => array(
+ *           'mode'       => 'production',        // lo que eligió el admin
+ *           'sandbox'    => array( 'access_token' => '…cifrado…', … ),
+ *           'production' => array( 'access_token' => '…cifrado…', … ),
+ *       ),
+ *   );
+ *
+ * Guardar en un modo no toca las claves del otro: pasar a comercial y volver a
+ * pruebas no borra ninguna, que es justo lo que hace falta para alternar.
+ *
+ * Lo leen la pantalla de pagos, el shortcode (radios del Paso 3), los endpoints
+ * y la pasarela al cobrar.
  *
  * @package SimpleForm\Payments
  */
@@ -30,6 +42,15 @@ final class PaymentConfig {
 
 	const MODE_SANDBOX    = 'sandbox';
 	const MODE_PRODUCTION = 'production';
+
+	/**
+	 * Los dos modos, en el orden en que se muestran.
+	 *
+	 * @return array
+	 */
+	public static function modes(): array {
+		return array( self::MODE_SANDBOX, self::MODE_PRODUCTION );
+	}
 
 	/**
 	 * IDs de pasarela habilitados, saneados contra el registro.
@@ -67,7 +88,8 @@ final class PaymentConfig {
 	}
 
 	/**
-	 * Modo de una pasarela: la constante manda sobre lo guardado.
+	 * Modo que eligió el admin (la constante manda). Puede no ser el que está
+	 * en uso: en producción sin HTTPS el sitio sigue en pruebas.
 	 *
 	 * Por defecto sandbox, que es el lado seguro: una producción no se cuela por
 	 * olvido.
@@ -75,11 +97,11 @@ final class PaymentConfig {
 	 * @param string $gateway_id
 	 * @return string
 	 */
-	public static function mode( string $gateway_id ): string {
+	public static function desired_mode( string $gateway_id ): string {
 		$name = self::constant_name( $gateway_id, 'mode' );
 
-		if ( defined( $name ) && self::MODE_PRODUCTION === constant( $name ) ) {
-			return self::MODE_PRODUCTION;
+		if ( defined( $name ) ) {
+			return ( self::MODE_PRODUCTION === constant( $name ) ) ? self::MODE_PRODUCTION : self::MODE_SANDBOX;
 		}
 
 		$stored = self::stored( $gateway_id );
@@ -90,8 +112,36 @@ final class PaymentConfig {
 	}
 
 	/**
-	 * Valor utilizable de una credencial: la constante primero, luego lo
-	 * guardado. Devuelve '' si no hay ninguna de las dos.
+	 * Modo efectivo: producción solo si de verdad se puede cobrar.
+	 *
+	 * Mercado Pago no acepta retornos ni notificaciones por HTTP, así que un
+	 * sitio sin HTTPS no puede estar en producción. La elección del admin queda
+	 * guardada (y sus claves también); simplemente no se activa.
+	 *
+	 * @param string $gateway_id
+	 * @return string
+	 */
+	public static function mode( string $gateway_id ): string {
+		if ( self::MODE_PRODUCTION !== self::desired_mode( $gateway_id ) ) {
+			return self::MODE_SANDBOX;
+		}
+
+		return self::site_is_https() ? self::MODE_PRODUCTION : self::MODE_SANDBOX;
+	}
+
+	/**
+	 * ¿El modo lo fija wp-config.php? La pantalla lo usa para bloquear el select.
+	 *
+	 * @param string $gateway_id
+	 * @return bool
+	 */
+	public static function mode_is_locked( string $gateway_id ): bool {
+		return defined( self::constant_name( $gateway_id, 'mode' ) );
+	}
+
+	/**
+	 * Valor utilizable de una credencial: la constante primero, luego el modo
+	 * activo. Devuelve '' si no hay ninguna de las dos.
 	 *
 	 * @param string $gateway_id
 	 * @param string $field
@@ -104,7 +154,7 @@ final class PaymentConfig {
 			return (string) constant( $name );
 		}
 
-		return self::stored_credential( $gateway_id, $field );
+		return self::stored_credential( $gateway_id, self::mode( $gateway_id ), $field );
 	}
 
 	/**
@@ -124,25 +174,63 @@ final class PaymentConfig {
 			return 'constant';
 		}
 
-		return '' !== self::stored_credential( $gateway_id, $field ) ? 'stored' : 'none';
+		return '' !== self::stored_credential( $gateway_id, self::mode( $gateway_id ), $field ) ? 'stored' : 'none';
 	}
 
 	/**
-	 * Guarda el modo y las credenciales de una pasarela.
+	 * ¿Ese modo tiene todas las credenciales de la pasarela?
 	 *
-	 * Un campo vacío conserva lo que ya había: el admin nunca muestra el valor,
-	 * así que en blanco significa "no lo cambio", no "bórralo".
+	 * @param string $gateway_id
+	 * @param string $mode
+	 * @return bool
+	 */
+	public static function has_keys( string $gateway_id, string $mode ): bool {
+		$cuenta = self::keys_count( $gateway_id, $mode );
+
+		return $cuenta['total'] > 0 && $cuenta['ok'] === $cuenta['total'];
+	}
+
+	/**
+	 * Cuántas credenciales tiene guardadas un modo (para el resumen de la
+	 * pantalla, sin enseñar ningún valor).
 	 *
-	 * En producción exige HTTPS en la URL del sitio: sin eso Mercado Pago no
-	 * acepta back_urls ni notificaciones.
+	 * @param string $gateway_id
+	 * @param string $mode
+	 * @return array{ok:int,total:int}
+	 */
+	public static function keys_count( string $gateway_id, string $mode ): array {
+		$fields = Gateways::credential_fields( $gateway_id );
+		$ok     = 0;
+
+		foreach ( $fields as $field ) {
+			$name = self::constant_name( $gateway_id, $field );
+
+			if ( ( defined( $name ) && '' !== (string) constant( $name ) ) || '' !== self::stored_credential( $gateway_id, $mode, $field ) ) {
+				$ok++;
+			}
+		}
+
+		return array( 'ok' => $ok, 'total' => count( $fields ) );
+	}
+
+	/**
+	 * Guarda el modo y las credenciales de una pasarela en el juego del modo
+	 * indicado. Las claves del otro modo no se tocan.
+	 *
+	 * Un campo vacío conserva lo que ya había **en ese modo**: el admin nunca ve
+	 * el valor, así que en blanco significa "no lo cambio".
+	 *
+	 * Guardar en producción sin HTTPS no se rechaza: las claves se guardan (si
+	 * no, el admin las perdería al escribir) pero el modo no se activa y la
+	 * pantalla lo avisa. El código de retorno es 'https' en ese caso.
 	 *
 	 * @param string $gateway_id
 	 * @param string $mode
 	 * @param array  $plain_fields field => valor en claro (solo lo que se escribió).
-	 * @return string Cadena vacía si se guardó. Si no, el motivo, que es la clave
-	 *                del aviso que muestra el panel: 'unknown' (la pasarela no
-	 *                está registrada), 'https' (en producción el sitio tiene que
-	 *                ser HTTPS) o 'crypto' (no hay cifrado disponible).
+	 * @return string '' si se guardó y quedó activo; si no, el motivo:
+	 *                'unknown' (pasarela no registrada), 'crypto' (no hay
+	 *                cifrado disponible) o 'https' (guardado, pero producción no
+	 *                se activa sin HTTPS).
 	 */
 	public static function save( string $gateway_id, string $mode, array $plain_fields = array() ): string {
 		if ( ! Gateways::has( $gateway_id ) ) {
@@ -151,16 +239,13 @@ final class PaymentConfig {
 
 		$mode = ( self::MODE_PRODUCTION === $mode ) ? self::MODE_PRODUCTION : self::MODE_SANDBOX;
 
-		if ( self::MODE_PRODUCTION === $mode && ! self::site_is_https() ) {
-			return 'https';
-		}
-
 		$all = get_option( self::OPTION_CREDENTIALS, array() );
 		$all = is_array( $all ) ? $all : array();
 
 		$set = isset( $all[ $gateway_id ] ) && is_array( $all[ $gateway_id ] ) ? $all[ $gateway_id ] : array();
+		$set = self::normalize_entry( $gateway_id, $set );
 
-		$set['mode'] = $mode;
+		$cifrados = array();
 
 		foreach ( Gateways::credential_fields( $gateway_id ) as $field ) {
 			if ( ! isset( $plain_fields[ $field ] ) || '' === $plain_fields[ $field ] ) {
@@ -176,7 +261,13 @@ final class PaymentConfig {
 				return 'crypto';
 			}
 
-			$set[ $field ] = $cipher;
+			$cifrados[ $field ] = $cipher;
+		}
+
+		$set['mode'] = $mode;
+
+		foreach ( $cifrados as $field => $cipher ) {
+			$set[ $mode ][ $field ] = $cipher;
 		}
 
 		$all[ $gateway_id ] = $set;
@@ -185,27 +276,105 @@ final class PaymentConfig {
 		// no cada petición del sitio (B-1).
 		update_option( self::OPTION_CREDENTIALS, $all, false );
 
+		if ( self::MODE_PRODUCTION === $mode && ! self::site_is_https() ) {
+			return 'https';
+		}
+
 		return '';
 	}
 
 	/**
-	 * Credencial guardada y descifrada. '' si no hay o no se puede descifrar.
+	 * Forja una entrada en la forma `mode` + un array por modo, moviendo los
+	 * campos planos del formato viejo al modo que tenían guardado.
 	 *
 	 * @param string $gateway_id
-	 * @param string $field
-	 * @return string
+	 * @param array  $set
+	 * @return array
 	 */
-	private static function stored_credential( string $gateway_id, string $field ): string {
-		$stored = self::stored( $gateway_id );
+	private static function normalize_entry( string $gateway_id, array $set ): array {
+		$mode = ( isset( $set['mode'] ) && self::MODE_PRODUCTION === $set['mode'] ) ? self::MODE_PRODUCTION : self::MODE_SANDBOX;
 
-		if ( ! isset( $stored[ $field ] ) || ! is_string( $stored[ $field ] ) ) {
-			return '';
+		$planos = array();
+
+		foreach ( Gateways::credential_fields( $gateway_id ) as $field ) {
+			if ( isset( $set[ $field ] ) && is_string( $set[ $field ] ) && '' !== $set[ $field ] ) {
+				$planos[ $field ] = $set[ $field ];
+			}
 		}
 
-		return Crypto::decrypt( $stored[ $field ] );
+		$nuevo = array( 'mode' => $mode );
+
+		foreach ( self::modes() as $m ) {
+			$bucket = isset( $set[ $m ] ) && is_array( $set[ $m ] ) ? $set[ $m ] : array();
+
+			// Los campos planos viejos pertenecen al modo que estaba guardado.
+			if ( $m === $mode ) {
+				$bucket = array_merge( $bucket, $planos );
+			}
+
+			$nuevo[ $m ] = $bucket;
+		}
+
+		return $nuevo;
 	}
 
 	/**
+	 * Migra el formato viejo (campos planos junto a 'mode') al de un juego por
+	 * modo. Idempotente: si ya está migrado no hace nada.
+	 */
+	public static function install(): void {
+		$all = get_option( self::OPTION_CREDENTIALS, null );
+
+		if ( ! is_array( $all ) || empty( $all ) ) {
+			return;
+		}
+
+		$cambio = false;
+
+		foreach ( $all as $gateway_id => $set ) {
+			if ( ! is_string( $gateway_id ) || ! is_array( $set ) || ! Gateways::has( $gateway_id ) ) {
+				continue;
+			}
+
+			$normalizado = self::normalize_entry( $gateway_id, $set );
+
+			if ( $normalizado !== $set ) {
+				$all[ $gateway_id ] = $normalizado;
+				$cambio             = true;
+			}
+		}
+
+		if ( $cambio ) {
+			update_option( self::OPTION_CREDENTIALS, $all, false );
+		}
+	}
+
+	/**
+	 * Credencial guardada y descifrada de un modo concreto. '' si no hay o no se
+	 * puede descifrar.
+	 *
+	 * @param string $gateway_id
+	 * @param string $mode
+	 * @param string $field
+	 * @return string
+	 */
+	private static function stored_credential( string $gateway_id, string $mode, string $field ): string {
+		$stored = self::stored( $gateway_id );
+
+		if ( ! isset( $stored[ $mode ] ) || ! is_array( $stored[ $mode ] ) ) {
+			return '';
+		}
+
+		if ( ! isset( $stored[ $mode ][ $field ] ) || ! is_string( $stored[ $mode ][ $field ] ) ) {
+			return '';
+		}
+
+		return Crypto::decrypt( $stored[ $mode ][ $field ] );
+	}
+
+	/**
+	 * Entrada guardada de una pasarela, siempre en el formato por modo.
+	 *
 	 * @param string $gateway_id
 	 * @return array
 	 */
@@ -216,7 +385,9 @@ final class PaymentConfig {
 			return array();
 		}
 
-		return $all[ $gateway_id ];
+		// Lectura tolerante: una instalación vieja trae los campos planos y tiene
+		// que seguir funcionando.
+		return self::normalize_entry( $gateway_id, $all[ $gateway_id ] );
 	}
 
 	/**
@@ -255,7 +426,7 @@ final class PaymentConfig {
 	/**
 	 * @return bool
 	 */
-	private static function site_is_https(): bool {
+	public static function site_is_https(): bool {
 		if ( ! function_exists( 'home_url' ) || ! function_exists( 'wp_parse_url' ) ) {
 			return false;
 		}

@@ -4,7 +4,7 @@ Tags: formulario, pago, mercadopago, servicios, mapa
 Requires at least: 6.0
 Requires PHP: 7.4
 Tested up to: 6.7
-Stable tag: 1.4.1
+Stable tag: 1.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,12 @@ No. Cada pedido guarda un snapshot de la etiqueta, el precio base y el precio po
 Porque todavía no se configuró ninguno en *Pedidos → Pagos*. Hasta que no haya un medio habilitado, el formulario no ofrece ninguno.
 
 == Changelog ==
+
+= 1.5.0 =
+* **Medios de pago con alta y baja**: la pantalla pasa a ser una lista de medios con un botón *Añadir medio de pago* (elige entre los proveedores registrados) y un *Quitar* por fila. Guardar deja habilitados exactamente los medios que están en pantalla; dar de baja uno no borra sus claves.
+* **Cada medio guarda sus credenciales por modo**: pruebas y comercial tienen su propio juego cifrado. Cambiar de modo y guardar ya no pisa las claves del otro: se puede ir y volver sin volver a escribirlas.
+* **Modo comercial**: se elige por medio en el panel. Sin HTTPS la elección y las claves quedan guardadas, pero el cobro real no se activa (Mercado Pago rechaza retornos por HTTP) y el aviso lo explica.
+* Las credenciales siguen cifradas con libsodium y el formato viejo se migra solo al activar el plugin.
 
 = 1.4.1 =
 * **El rango del radio sí llega al formulario.** `config.js` no publicaba `radius` en `window.SimpleForm`, así que el validador del navegador seguía con el 0.1–1 fijo y rechazaba o aceptaba de más según el rango configurado.

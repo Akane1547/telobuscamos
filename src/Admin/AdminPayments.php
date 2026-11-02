@@ -2,10 +2,14 @@
 /**
  * Pantalla de administración de los medios de pago.
  *
- * Aquí se elige qué pasarelas ofrece el Paso 3 del formulario y se cargan sus
- * credenciales. Esta pantalla no conoce ninguna pasarela en concreto: el
+ * Aquí se eligen los medios que ofrece el Paso 3 del formulario y se cargan
+ * sus credenciales. Esta pantalla no conoce ninguna pasarela en concreto: el
  * registro (Gateways) dice cuáles hay y qué campos pide cada una, así que añadir
  * una es una entrada en el registro y nada más.
+ *
+ * Cada medio tiene su juego de credenciales **por modo** (pruebas y comercial):
+ * cambiar de modo y guardar no borra las claves del otro, así se puede alternar
+ * sin volver a escribirlas.
  *
  * Las credenciales nunca se pintan: si hay un valor guardado el campo sale vacío
  * con un marcador, y en blanco significa "no lo cambio". Si el valor lo fija una
@@ -16,9 +20,9 @@
 
 namespace SimpleForm\Admin;
 
+use SimpleForm\Core\Assets;
 use SimpleForm\Payments\Gateways;
 use SimpleForm\Payments\PaymentConfig;
-use SimpleForm\Security\Crypto;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -28,22 +32,28 @@ class AdminPayments {
 
 	const MENU_SLUG = 'simple-form-payments';
 
-	const ACTION_METHODS     = 'sf_save_payment_methods';
-	const ACTION_CREDENTIALS = 'sf_save_payment_credentials';
+	const ACTION_SAVE = 'sf_save_payments';
+	const NONCE_SAVE  = 'sf_payments_nonce';
 
-	const NONCE_METHODS     = 'sf_payment_methods_nonce';
-	const NONCE_CREDENTIALS = 'sf_payment_credentials_nonce';
+	const HANDLE_ADMIN_JS = 'simple-form-admin-payments';
+
+	/**
+	 * Hook de la pantalla, tal como lo devuelve add_submenu_page().
+	 *
+	 * @var string
+	 */
+	private string $screen_id = '';
 
 	public function __construct() {
 		// Prioridad 11: el menú padre (AdminMenu) se registra en la 9 y
 		// Servicios de pago en la 10, así que este queda justo debajo.
 		add_action( 'admin_menu', array( $this, 'register_menu' ), 11 );
-		add_action( 'admin_post_' . self::ACTION_METHODS, array( $this, 'handle_save_methods' ) );
-		add_action( 'admin_post_' . self::ACTION_CREDENTIALS, array( $this, 'handle_save_credentials' ) );
+		add_action( 'admin_post_' . self::ACTION_SAVE, array( $this, 'handle_save' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 	}
 
 	public function register_menu(): void {
-		add_submenu_page(
+		$this->screen_id = (string) add_submenu_page(
 			AdminMenu::SLUG,
 			__( 'Medios de pago', 'simple-form' ),
 			__( 'Medios de pago', 'simple-form' ),
@@ -53,56 +63,79 @@ class AdminPayments {
 		);
 	}
 
+	/**
+	 * Encola el JS de la pantalla, solo en esta pantalla.
+	 *
+	 * @param string $hook_suffix Identificador de la pantalla actual.
+	 */
+	public function enqueue_admin_assets( string $hook_suffix ): void {
+		if ( $this->screen_id !== $hook_suffix ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			self::HANDLE_ADMIN_JS,
+			SIMPLE_FORM_URL . 'assets/js/admin-payments.js',
+			array(),
+			Assets::asset_version( 'assets/js/admin-payments.js', SIMPLE_FORM_VERSION ),
+			true
+		);
+	}
+
 	public function render_page(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 
-		$ids     = Gateways::ids();
-		$enabled = PaymentConfig::enabled_ids();
+		$enabled   = PaymentConfig::enabled_ids();
+		$available = array_values( array_diff( Gateways::ids(), $enabled ) );
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Medios de pago', 'simple-form' ); ?></h1>
 
 			<?php $this->render_notices(); ?>
 
-			<p><?php esc_html_e( 'Estos son los medios que ofrece el Paso 3 del formulario. Un medio que no esté activo no se ofrece al cliente ni se acepta desde el servidor.', 'simple-form' ); ?></p>
+			<p><?php esc_html_e( 'Estos son los medios que ofrece el Paso 3 del formulario. Cada uno guarda sus credenciales de pruebas y de producción por separado: cambiar de modo no borra las del otro.', 'simple-form' ); ?></p>
 
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-				<?php wp_nonce_field( self::ACTION_METHODS, self::NONCE_METHODS ); ?>
-				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_METHODS ); ?>" />
+				<?php wp_nonce_field( self::ACTION_SAVE, self::NONCE_SAVE ); ?>
+				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_SAVE ); ?>" />
 
-				<table class="widefat striped" style="max-width: 760px;">
-					<thead>
-						<tr>
-							<th style="width: 80px;"><?php esc_html_e( 'Activo', 'simple-form' ); ?></th>
-							<th><?php esc_html_e( 'Medio', 'simple-form' ); ?></th>
-							<th><?php esc_html_e( 'Credenciales', 'simple-form' ); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php if ( empty( $ids ) ) : ?>
-							<tr>
-								<td colspan="3"><?php esc_html_e( 'No hay ninguna pasarela registrada.', 'simple-form' ); ?></td>
-							</tr>
-						<?php else : ?>
-							<?php foreach ( $ids as $id ) : ?>
-								<tr>
-									<td>
-										<input type="checkbox" name="methods[]" value="<?php echo esc_attr( $id ); ?>" <?php checked( in_array( $id, $enabled, true ) ); ?> />
-									</td>
-									<td><?php echo esc_html( Gateways::label( $id ) ); ?></td>
-									<td><?php echo esc_html( $this->sources_summary( $id ) ); ?></td>
-								</tr>
-							<?php endforeach; ?>
-						<?php endif; ?>
-					</tbody>
-				</table>
+				<p class="sf-payments__add">
+					<label for="sf-add-payment"><strong><?php esc_html_e( 'Añadir medio de pago', 'simple-form' ); ?></strong></label>
+					<select id="sf-add-payment">
+						<?php foreach ( $available as $id ) : ?>
+							<option value="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( Gateways::label( $id ) ); ?></option>
+						<?php endforeach; ?>
+					</select>
+					<button type="button" class="button" data-add-payment <?php disabled( empty( $available ) ); ?>>
+						<?php esc_html_e( 'Añadir', 'simple-form' ); ?>
+					</button>
+					<span class="description" data-add-empty <?php echo empty( $available ) ? '' : 'hidden'; ?>>
+						<?php esc_html_e( 'No hay más medios disponibles en este plugin.', 'simple-form' ); ?>
+					</span>
+				</p>
 
-				<?php submit_button( __( 'Guardar medios', 'simple-form' ) ); ?>
+				<div id="sf-payment-rows">
+					<?php foreach ( $enabled as $id ) : ?>
+						<?php $this->render_method( $id, false ); ?>
+					<?php endforeach; ?>
+
+					<?php if ( empty( $enabled ) ) : ?>
+						<p class="sf-payments__empty" data-payments-empty>
+							<?php esc_html_e( 'Todavía no hay ningún medio cargado. Usa "Añadir medio de pago" para elegir uno.', 'simple-form' ); ?>
+						</p>
+					<?php endif; ?>
+				</div>
+
+				<?php submit_button( __( 'Guardar medios de pago', 'simple-form' ) ); ?>
 			</form>
 
-			<?php $this->render_credentials_form( $ids ); ?>
+			<?php foreach ( $available as $id ) : ?>
+				<template id="sf-payment-tpl-<?php echo esc_attr( $id ); ?>">
+					<?php $this->render_method( $id, true ); ?>
+				</template>
+			<?php endforeach; ?>
 
 			<?php $this->render_checks(); ?>
 		</div>
@@ -110,62 +143,65 @@ class AdminPayments {
 	}
 
 	/**
-	 * Aviso de guardado, errores y los dos avisos de configuración.
+	 * Avisos de guardado, errores y los avisos de configuración.
 	 */
 	private function render_notices(): void {
-		// Solo es un aviso de pantalla tras una redirección nuestra; no decide nada.
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		// Solo son avisos de pantalla tras una redirección nuestra; no deciden nada.
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended
 		$updated = isset( $_GET['updated'] ) ? sanitize_key( wp_unslash( $_GET['updated'] ) ) : '';
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$error = isset( $_GET['error'] ) ? sanitize_key( wp_unslash( $_GET['error'] ) ) : '';
+		$warning = isset( $_GET['warning'] ) ? sanitize_key( wp_unslash( $_GET['warning'] ) ) : '';
+		$error   = isset( $_GET['error'] ) ? sanitize_key( wp_unslash( $_GET['error'] ) ) : '';
+		// phpcs:enable
 
-		$mensajes = array(
-			'methods'     => array( 'success', __( 'Medios guardados.', 'simple-form' ) ),
-			'credentials' => array( 'success', __( 'Credenciales guardadas.', 'simple-form' ) ),
+		if ( 'payments' === $updated ) {
+			printf(
+				'<div class="notice notice-success is-dismissible"><p>%s</p></div>',
+				esc_html__( 'Medios y credenciales guardados.', 'simple-form' )
+			);
+		}
+
+		$avisos = array(
+			'https' => __( 'Las claves de producción quedaron guardadas, pero el modo comercial no se activa hasta que el sitio esté en HTTPS: Mercado Pago rechaza los retornos y las notificaciones por HTTP.', 'simple-form' ),
 		);
 
-		if ( isset( $mensajes[ $updated ] ) ) {
+		if ( '' !== $warning && isset( $avisos[ $warning ] ) ) {
 			printf(
-				'<div class="notice notice-%s is-dismissible"><p>%s</p></div>',
-				esc_attr( $mensajes[ $updated ][0] ),
-				esc_html( $mensajes[ $updated ][1] )
+				'<div class="notice notice-warning"><p>%s</p></div>',
+				esc_html( $avisos[ $warning ] )
 			);
 		}
 
 		$errores = array(
-			'https'   => __( 'No se guardó: en modo producción la dirección del sitio tiene que ser HTTPS.', 'simple-form' ),
 			'crypto'  => __( 'No se guardó: este PHP no puede cifrar (falta libsodium) o wp-config.php no tiene salts.', 'simple-form' ),
 			'unknown' => __( 'No se guardó: esa pasarela no está registrada.', 'simple-form' ),
 		);
 
-		if ( isset( $errores[ $error ] ) ) {
+		if ( '' !== $error && isset( $errores[ $error ] ) ) {
 			printf(
 				'<div class="notice notice-error is-dismissible"><p>%s</p></div>',
 				esc_html( $errores[ $error ] )
 			);
 		}
 
-		$ids     = Gateways::ids();
-		$enabled = PaymentConfig::enabled_ids();
-
-		if ( empty( $ids ) ) {
+		if ( empty( Gateways::ids() ) ) {
 			printf(
 				'<div class="notice notice-warning"><p>%s</p></div>',
 				esc_html__( 'No hay ninguna pasarela registrada: el formulario no puede cobrar.', 'simple-form' )
 			);
+
 			return;
 		}
 
-		if ( empty( $enabled ) ) {
+		if ( empty( PaymentConfig::enabled_ids() ) ) {
 			printf(
 				'<div class="notice notice-warning"><p>%s</p></div>',
-				esc_html__( 'No hay ningún medio activo: el Paso 3 no ofrecerá ninguno y el formulario no se podrá completar.', 'simple-form' )
+				esc_html__( 'No hay ningún medio cargado: el Paso 3 no ofrecerá ninguno y el formulario no se podrá completar.', 'simple-form' )
 			);
 		}
 
 		$en_sandbox = array();
 
-		foreach ( $enabled as $id ) {
+		foreach ( PaymentConfig::enabled_ids() as $id ) {
 			if ( PaymentConfig::MODE_SANDBOX === PaymentConfig::mode( $id ) ) {
 				$en_sandbox[] = Gateways::label( $id );
 			}
@@ -187,54 +223,72 @@ class AdminPayments {
 	}
 
 	/**
-	 * Formulario de credenciales, una sección por pasarela registrada. Los campos
-	 * salen del registro: esta pantalla no sabe qué pide Mercado Pago.
+	 * Una fila de medio: modo, credenciales y estado de cada juego de claves.
 	 *
-	 * @param array $ids
+	 * La misma función sirve para las filas visibles y para la plantilla de un
+	 * medio que todavía no se agregó (`<template>`: su contenido no se envía).
+	 *
+	 * @param string $id          ID de la pasarela.
+	 * @param bool   $is_template Si es la plantilla de "Añadir".
 	 */
-	private function render_credentials_form( array $ids ): void {
-		if ( empty( $ids ) ) {
-			return;
-		}
+	private function render_method( string $id, bool $is_template ): void {
+		$prefix = $is_template ? 'tpl-' : '';
 		?>
-		<h2><?php esc_html_e( 'Credenciales', 'simple-form' ); ?></h2>
-		<p><?php esc_html_e( 'Los valores no se muestran nunca. Un campo en blanco conserva el que ya estaba guardado.', 'simple-form' ); ?></p>
+		<div class="sf-payment" data-payment="<?php echo esc_attr( $id ); ?>">
+			<div class="sf-payment__head">
+				<h2>
+					<?php echo esc_html( Gateways::label( $id ) ); ?>
+					<span class="sf-payment__badge <?php echo esc_attr( 'sf-payment__badge--' . PaymentConfig::mode( $id ) ); ?>">
+						<?php echo esc_html( $this->mode_short_label( PaymentConfig::mode( $id ) ) ); ?>
+					</span>
+				</h2>
+				<button type="button" class="button-link sf-payment__remove" data-remove-payment>
+					<?php esc_html_e( 'Quitar', 'simple-form' ); ?>
+				</button>
+			</div>
 
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-			<?php wp_nonce_field( self::ACTION_CREDENTIALS, self::NONCE_CREDENTIALS ); ?>
-			<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_CREDENTIALS ); ?>" />
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row">
+						<label for="sf-mode-<?php echo esc_attr( $prefix . $id ); ?>"><?php esc_html_e( 'Modo', 'simple-form' ); ?></label>
+					</th>
+					<td>
+						<?php $this->render_mode_select( $id, $is_template ); ?>
+					</td>
+				</tr>
 
-			<?php foreach ( $ids as $id ) : ?>
-				<h3><?php echo esc_html( Gateways::label( $id ) ); ?></h3>
-				<table class="form-table" role="presentation">
+				<?php foreach ( Gateways::credential_fields( $id ) as $field ) : ?>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Modo', 'simple-form' ); ?></th>
-						<td><?php $this->render_mode_select( $id ); ?></td>
+						<th scope="row"><?php echo esc_html( $this->field_label( $field ) ); ?></th>
+						<td><?php $this->render_credential_field( $id, $field ); ?></td>
 					</tr>
-					<?php foreach ( Gateways::credential_fields( $id ) as $field ) : ?>
-						<tr>
-							<th scope="row"><?php echo esc_html( $this->field_label( $field ) ); ?></th>
-							<td><?php $this->render_credential_field( $id, $field ); ?></td>
-						</tr>
-					<?php endforeach; ?>
-				</table>
-			<?php endforeach; ?>
+				<?php endforeach; ?>
 
-			<?php submit_button( __( 'Guardar credenciales', 'simple-form' ) ); ?>
-		</form>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Claves guardadas', 'simple-form' ); ?></th>
+					<td>
+						<?php $this->render_keys_state( $id ); ?>
+					</td>
+				</tr>
+			</table>
+		</div>
 		<?php
 	}
 
 	/**
+	 * Selector de modo. Si lo fija wp-config.php, sale bloqueado y se explica.
+	 *
 	 * @param string $id
+	 * @param bool   $is_template
 	 */
-	private function render_mode_select( string $id ): void {
-		$name   = 'credentials[' . $id . '][mode]';
-		$mode   = PaymentConfig::mode( $id );
-		$source = PaymentConfig::source( $id, 'mode' );
+	private function render_mode_select( string $id, bool $is_template ): void {
+		$mode = PaymentConfig::desired_mode( $id );
 
-		if ( 'constant' === $source ) {
-			printf( '<input type="text" class="regular-text" disabled="disabled" value="%s" />', esc_attr( $this->mode_label( $mode ) ) );
+		if ( PaymentConfig::mode_is_locked( $id ) ) {
+			printf(
+				'<input type="text" class="regular-text" disabled="disabled" value="%s" />',
+				esc_attr( $this->mode_label( $mode ) )
+			);
 			printf(
 				'<p class="description">%s</p>',
 				esc_html(
@@ -245,12 +299,17 @@ class AdminPayments {
 					)
 				)
 			);
+
 			return;
 		}
 
-		printf( '<select name="%s">', esc_attr( $name ) );
+		printf(
+			'<select id="sf-mode-%s" name="payments[%s][mode]">',
+			esc_attr( ( $is_template ? 'tpl-' : '' ) . $id ),
+			esc_attr( $id )
+		);
 
-		foreach ( array( PaymentConfig::MODE_SANDBOX, PaymentConfig::MODE_PRODUCTION ) as $opcion ) {
+		foreach ( PaymentConfig::modes() as $opcion ) {
 			printf(
 				'<option value="%s"%s>%s</option>',
 				esc_attr( $opcion ),
@@ -260,6 +319,13 @@ class AdminPayments {
 		}
 
 		echo '</select>';
+
+		if ( PaymentConfig::MODE_PRODUCTION === $mode && ! PaymentConfig::site_is_https() ) {
+			printf(
+				'<p class="description">%s</p>',
+				esc_html__( 'Elegiste el modo comercial, pero el sitio no está en HTTPS: las claves se guardan y el cobro real no se activa hasta que lo esté.', 'simple-form' )
+			);
+		}
 	}
 
 	/**
@@ -270,7 +336,7 @@ class AdminPayments {
 	 */
 	private function render_credential_field( string $id, string $field ): void {
 		$source = PaymentConfig::source( $id, $field );
-		$name   = 'credentials[' . $id . '][' . $field . ']';
+		$name   = 'payments[' . $id . '][' . $field . ']';
 
 		if ( 'constant' === $source ) {
 			printf(
@@ -287,6 +353,7 @@ class AdminPayments {
 					)
 				)
 			);
+
 			return;
 		}
 
@@ -295,8 +362,7 @@ class AdminPayments {
 			: __( 'sin configurar', 'simple-form' );
 
 		// type=password: la credencial no se lee mientras se escribe ni queda
-		// expuesta al autocompletado o a una extensión del navegador. El
-		// navegador tampoco la ofrece guardar.
+		// expuesta al autocompletado o a una extensión del navegador.
 		printf(
 			'<input type="password" class="regular-text" name="%s" value="" autocomplete="new-password" spellcheck="false" placeholder="%s" />',
 			esc_attr( $name ),
@@ -305,11 +371,47 @@ class AdminPayments {
 	}
 
 	/**
+	 * Estado de los dos juegos de claves, sin enseñar ningún valor.
+	 *
+	 * @param string $id
+	 */
+	private function render_keys_state( string $id ): void {
+		$partes = array();
+
+		foreach ( PaymentConfig::modes() as $mode ) {
+			$cuenta = PaymentConfig::keys_count( $id, $mode );
+
+			$partes[] = sprintf(
+				'<strong>%1$s:</strong> %2$s',
+				esc_html( $this->mode_short_label( $mode ) ),
+				esc_html(
+					sprintf(
+						/* translators: 1: claves guardadas, 2: total de claves. */
+						__( '%1$d de %2$d', 'simple-form' ),
+						$cuenta['ok'],
+						$cuenta['total']
+					)
+				)
+			);
+		}
+
+		printf(
+			'<p class="description" data-keys-state>%s</p>',
+			implode( ' &nbsp;·&nbsp; ', $partes ) // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- cada parte ya viene escapada.
+		);
+
+		printf(
+			'<p class="description">%s</p>',
+			esc_html__( 'Cada modo guarda sus propias claves: cambiar de modo y guardar no borra las del otro.', 'simple-form' )
+		);
+	}
+
+	/**
 	 * Comprobaciones que §16 pide antes de dar la integración por buena.
 	 */
 	private function render_checks(): void {
-		$https  = 'https' === wp_parse_url( home_url(), PHP_URL_SCHEME );
-		$sodium = Crypto::available();
+		$https  = PaymentConfig::site_is_https();
+		$sodium = \SimpleForm\Security\Crypto::available();
 		?>
 		<h2><?php esc_html_e( 'Comprobaciones', 'simple-form' ); ?></h2>
 		<table class="widefat striped" style="max-width: 760px;">
@@ -321,7 +423,7 @@ class AdminPayments {
 							<?php esc_html_e( 'Sí. Mercado Pago exige HTTPS para cobrar de verdad.', 'simple-form' ); ?>
 						<?php else : ?>
 							<strong><?php esc_html_e( 'No.', 'simple-form' ); ?></strong>
-							<?php esc_html_e( 'Con HTTP solo se puede probar: no se guardará el modo producción y Mercado Pago rechaza los retornos a un dominio local.', 'simple-form' ); ?>
+							<?php esc_html_e( 'Con HTTP solo se puede probar: el modo comercial no se activa y Mercado Pago rechaza los retornos a un dominio local.', 'simple-form' ); ?>
 						<?php endif; ?>
 					</td>
 				</tr>
@@ -360,82 +462,56 @@ class AdminPayments {
 	 */
 	private function mode_label( string $mode ): string {
 		return ( PaymentConfig::MODE_PRODUCTION === $mode )
-			? __( 'Producción (cobra de verdad)', 'simple-form' )
+			? __( 'Comercial (cobra de verdad)', 'simple-form' )
 			: __( 'Pruebas (sandbox, no cobra)', 'simple-form' );
 	}
 
 	/**
-	 * Resumen de dónde sale cada credencial, sin enseñar ningún valor.
-	 *
-	 * @param string $id
+	 * @param string $mode
 	 * @return string
 	 */
-	private function sources_summary( string $id ): string {
-		$campos    = array_merge( array( 'mode' ), Gateways::credential_fields( $id ) );
-		$constant  = 0;
-		$stored    = 0;
-		$missing   = 0;
+	private function mode_short_label( string $mode ): string {
+		return ( PaymentConfig::MODE_PRODUCTION === $mode )
+			? __( 'Comercial', 'simple-form' )
+			: __( 'Pruebas', 'simple-form' );
+	}
 
-		foreach ( $campos as $field ) {
-			switch ( PaymentConfig::source( $id, $field ) ) {
-				case 'constant':
-					$constant++;
-					break;
-				case 'stored':
-					$stored++;
-					break;
-				default:
-					$missing++;
+	/**
+	 * Guarda los medios que vinieron en el formulario y sus credenciales.
+	 *
+	 * La lista de medios activos es exactamente lo que llega en el POST: quitar
+	 * una fila da de baja el medio (sus claves quedan guardadas por si se vuelve
+	 * a agregar).
+	 */
+	public function handle_save(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'No autorizado.', 'simple-form' ) );
+		}
+
+		check_admin_referer( self::ACTION_SAVE, self::NONCE_SAVE );
+
+		$raw = isset( $_POST['payments'] ) && is_array( $_POST['payments'] ) ? wp_unslash( $_POST['payments'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- se sanea campo por campo abajo.
+
+		$ids     = array();
+		$error   = '';
+		$warning = '';
+
+		foreach ( $raw as $id => $entrada ) {
+			if ( ! is_string( $id ) ) {
+				continue;
 			}
-		}
 
-		if ( 0 === $missing && 0 === $stored ) {
-			return __( 'Todo desde wp-config.php.', 'simple-form' );
-		}
+			$id = sanitize_key( $id );
 
-		return sprintf(
-			/* translators: 1: campos guardados, 2: campos desde wp-config.php, 3: campos sin configurar. */
-			__( '%1$d guardadas, %2$d desde wp-config.php, %3$d sin configurar.', 'simple-form' ),
-			$stored,
-			$constant,
-			$missing
-		);
-	}
+			if ( '' === $id || ! Gateways::has( $id ) || ! is_array( $entrada ) ) {
+				continue;
+			}
 
-	/**
-	 * Guarda la lista de medios activos.
-	 */
-	public function handle_save_methods(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'No autorizado.', 'simple-form' ) );
-		}
+			if ( in_array( $id, $ids, true ) ) {
+				continue;
+			}
 
-		check_admin_referer( self::ACTION_METHODS, self::NONCE_METHODS );
-
-		$raw = isset( $_POST['methods'] ) && is_array( $_POST['methods'] ) ? wp_unslash( $_POST['methods'] ) : array();
-
-		// Sin marcar ninguno se guarda una lista vacía, que es una elección
-		// legítima: el aviso de "sin medios activos" queda a la vista.
-		PaymentConfig::save_enabled_ids( $raw );
-
-		$this->redirect( 'methods' );
-	}
-
-	/**
-	 * Guarda el modo y las credenciales de cada pasarela.
-	 */
-	public function handle_save_credentials(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'No autorizado.', 'simple-form' ) );
-		}
-
-		check_admin_referer( self::ACTION_CREDENTIALS, self::NONCE_CREDENTIALS );
-
-		$raw = isset( $_POST['credentials'] ) && is_array( $_POST['credentials'] ) ? wp_unslash( $_POST['credentials'] ) : array();
-
-		foreach ( Gateways::ids() as $id ) {
-			$entrada = isset( $raw[ $id ] ) && is_array( $raw[ $id ] ) ? $raw[ $id ] : array();
-			$modo    = isset( $entrada['mode'] ) ? sanitize_key( $entrada['mode'] ) : PaymentConfig::MODE_SANDBOX;
+			$mode = isset( $entrada['mode'] ) ? sanitize_key( $entrada['mode'] ) : PaymentConfig::MODE_SANDBOX;
 
 			$campos = array();
 
@@ -457,17 +533,27 @@ class AdminPayments {
 				$campos[ $field ] = $valor;
 			}
 
-			$resultado = PaymentConfig::save( $id, $modo, $campos );
+			$resultado = PaymentConfig::save( $id, $mode, $campos );
 
-			if ( '' !== $resultado ) {
-				// El motivo real viaja en la URL y la pantalla ya tiene un aviso
-				// por cada uno. Antes se reportaba siempre 'https', aunque el
-				// fallo hubiera sido el cifrado o una pasarela desconocida.
-				$this->redirect( '', $resultado );
+			if ( 'unknown' === $resultado || 'crypto' === $resultado ) {
+				// Un medio que no se pudo guardar no se da de alta.
+				if ( '' === $error ) {
+					$error = $resultado;
+				}
+
+				continue;
 			}
+
+			if ( 'https' === $resultado ) {
+				$warning = 'https';
+			}
+
+			$ids[] = $id;
 		}
 
-		$this->redirect( 'credentials' );
+		PaymentConfig::save_enabled_ids( $ids );
+
+		$this->redirect( '' === $error ? 'payments' : '', $error, $warning );
 	}
 
 	/**
@@ -475,8 +561,9 @@ class AdminPayments {
 	 *
 	 * @param string $updated
 	 * @param string $error
+	 * @param string $warning
 	 */
-	private function redirect( string $updated = '', string $error = '' ): void {
+	private function redirect( string $updated = '', string $error = '', string $warning = '' ): void {
 		$args = array();
 
 		if ( '' !== $updated ) {
@@ -485,6 +572,10 @@ class AdminPayments {
 
 		if ( '' !== $error ) {
 			$args['error'] = $error;
+		}
+
+		if ( '' !== $warning ) {
+			$args['warning'] = $warning;
 		}
 
 		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php?page=' . self::MENU_SLUG ) ) );

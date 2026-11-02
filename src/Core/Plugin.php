@@ -84,6 +84,10 @@ class Plugin {
             function () {
                 Catalog::install();
                 Radius::install();
+
+                // Credenciales de pago: migra el formato plano viejo al de un
+                // juego de claves por modo (pruebas / comercial).
+                \SimpleForm\Payments\PaymentConfig::install();
             }
         );
 
