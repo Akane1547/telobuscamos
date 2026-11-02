@@ -25,7 +25,7 @@ final class Database {
 	/**
 	 * Versión del esquema. Subir al cambiar cualquier tabla.
 	 */
-	const DB_VERSION = 3;
+	const DB_VERSION = 4;
 
 	const TABLE_ORDERS         = 'sf_orders';
 	const TABLE_PAYMENT_EVENTS = 'sf_payment_events';
@@ -69,6 +69,9 @@ final class Database {
 				full_name VARCHAR(191) NOT NULL DEFAULT '',
 				email VARCHAR(191) NOT NULL DEFAULT '',
 				phone VARCHAR(32) NOT NULL DEFAULT '',
+				object_type VARCHAR(64) NOT NULL DEFAULT '',
+				object_size VARCHAR(64) NOT NULL DEFAULT '',
+				object_material VARCHAR(64) NOT NULL DEFAULT '',
 				description TEXT NULL,
 				service_id VARCHAR(191) NOT NULL DEFAULT '',
 				service_label VARCHAR(191) NOT NULL DEFAULT '',

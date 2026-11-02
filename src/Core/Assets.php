@@ -47,7 +47,10 @@ class Assets {
 
         $modules = array(
             'config'    => array(),
-            'validator' => array( self::HANDLE_CONFIG ),
+            // Los catálogos se cargan por AJAX: van justo después de la config
+            // y antes del validador y del stepper, que los consultan.
+            'catalog'   => array( self::HANDLE_CONFIG ),
+            'validator' => array( self::HANDLE_CONFIG, 'simple-form-catalog' ),
             'ui'        => array( 'simple-form-validator' ),
             'receipt'   => array( 'simple-form-ui' ),
             'map'       => array( 'simple-form-receipt' ),
@@ -91,6 +94,7 @@ class Assets {
                 'nonce'   => wp_create_nonce( 'simple_form_nonce' ),
                 'actions' => array(
                     'getProgress'     => 'simple_form_get_progress',
+                    'getCatalogs'     => 'simple_form_get_catalogs',
                     'saveStep1'       => 'simple_form_save_step1',
                     'saveStep2'       => 'simple_form_save_step2',
                     'saveStep3'       => 'simple_form_save_step3',

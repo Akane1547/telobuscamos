@@ -52,6 +52,21 @@ function sanitize_key( $key ) {
 	return \SimpleForm\Tests\FakeWordPress::sanitize_key( (string) $key );
 }
 
+// Doble del slug de WordPress: minúsculas, sin acentos y con guiones. Lo usa
+// Catalog::normalize() para las claves que viajan en el formulario.
+function sanitize_title( $title ) {
+	$title = strtolower( trim( (string) $title ) );
+	$title = strtr(
+		$title,
+		array(
+			'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n',
+		)
+	);
+	$title = (string) preg_replace( '/[^a-z0-9]+/', '-', $title );
+
+	return trim( $title, '-' );
+}
+
 function sanitize_text_field( $value ) {
 	return trim( strip_tags( (string) $value ) );
 }

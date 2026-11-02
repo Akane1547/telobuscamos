@@ -4,7 +4,7 @@ Tags: formulario, pago, mercadopago, servicios, mapa
 Requires at least: 6.0
 Requires PHP: 7.4
 Tested up to: 6.7
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,11 @@ No. Cada pedido guarda un snapshot de la etiqueta, el precio base y el precio po
 Porque todavía no se configuró ninguno en *Pedidos → Pagos*. Hasta que no haya un medio habilitado, el formulario no ofrece ninguno.
 
 == Changelog ==
+
+= 1.3.0 =
+* **Paso 1 con el objeto**: "¿Qué tipo de objeto es?", descripción del objeto, tamaño y material. Los tres selects salen de listas que edita el administrador en *Catálogos del objeto*, y llegan al formulario **por AJAX con nonce**: las opciones no viajan en el HTML de la página.
+* El servidor guarda el **id** de la lista, no texto libre, y lo valida contra el catálogo antes de guardar (un id inventado se rechaza con 422 y el campo marcado).
+* Cada pedido guarda tipo, tamaño y material; el detalle en wp-admin y el correo al administrador muestran qué objeto hay que buscar.
 
 = 1.2.0 =
 * **Confirmación por correo al registrarse**: la cuenta queda pendiente y solo se activa al abrir el enlace del correo y elegir la contraseña. Así nadie puede quedarse con una cuenta ajena escribiendo su correo, y la respuesta del formulario ya no delata si el correo existe.

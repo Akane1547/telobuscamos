@@ -75,8 +75,19 @@ class Plugin {
             }
         );
 
+        // Catálogos del objeto (tipo, tamaño, material): se siembran una sola
+        // vez, también en instalaciones que ya estaban activas. Van en
+        // wp_loaded como el alta de la página de perfil.
+        add_action(
+            'wp_loaded',
+            function () {
+                Catalog::install();
+            }
+        );
+
         // Solo instanciar la pantalla de administración si estamos en wp-admin
         if ( is_admin() ) {
+            new \SimpleForm\Admin\AdminCatalogs();
             new AdminServices();
             new AdminPayments();
             new AdminOrders();

@@ -30,6 +30,9 @@
 				'#pn-receipt-name': step1.name,
 				'#pn-receipt-email': step1.email,
 				'#pn-receipt-phone': step1.phone,
+				'#pn-receipt-object': [ step1.object_type_label, step1.object_size_label, step1.object_material_label ]
+					.filter( Boolean )
+					.join( ' · ' ),
 				'#pn-receipt-description': step1.description || 'Sin descripción',
 				'#pn-receipt-service': step2.service_label,
 				'#pn-receipt-radius': step2.radius_km ? window.SimpleForm.formatRadius( step2.radius_km ) : null,

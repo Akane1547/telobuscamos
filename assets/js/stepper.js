@@ -65,6 +65,13 @@
 		const form = wrapper.querySelector( SF.selectors.form );
 		const currentStep = SF.state.currentStep;
 
+		// Los selects del objeto se llenan por AJAX: si el comprador aprieta
+		// antes de que lleguen, se esperaría a validar un select vacío. `load()`
+		// resuelve al instante cuando ya están.
+		if ( 1 === currentStep && window.SimpleFormCatalog ) {
+			await window.SimpleFormCatalog.load();
+		}
+
 		const clientCheck = Validator.validateStep( currentStep, form );
 		UI.renderErrors( form, clientCheck.errors );
 
@@ -295,9 +302,12 @@
 			restartBtn.addEventListener( 'click', () => restart( wrapper ) );
 		}
 
-		// Al cargar: primero se retoma la sesión y, si el comprador viene de
-		// pagar, después se verifica el estado real contra el servidor.
-		restoreSession( wrapper ).then( () => handleReturn( wrapper ) );
+		// Al cargar: primero los catálogos del objeto (los selects nacen vacíos),
+		// después se retoma la sesión y, si el comprador viene de pagar, se
+		// verifica el estado real contra el servidor.
+		const catalogos = window.SimpleFormCatalog ? window.SimpleFormCatalog.load() : Promise.resolve( false );
+
+		catalogos.then( () => restoreSession( wrapper ) ).then( () => handleReturn( wrapper ) );
 	}
 
 	if ( document.readyState === 'loading' ) {

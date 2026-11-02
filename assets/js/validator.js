@@ -71,6 +71,41 @@
 				errors.phone = t( 'errPhone', 'Ingresa un teléfono chileno válido (9 dígitos, empieza con 9).' );
 			}
 
+			// Las tres listas vienen del catálogo del admin (catalog.js). Si una
+			// no tiene opciones, el campo está escondido y no se exige.
+			const catalogo = window.SimpleFormCatalog;
+			const campos = [
+				[ 'object_type', 'types', t( 'errObjectType', 'Selecciona qué tipo de objeto es.' ) ],
+				[ 'object_size', 'sizes', t( 'errObjectSize', 'Selecciona el tamaño del objeto.' ) ],
+				[ 'object_material', 'materials', t( 'errObjectMaterial', 'Selecciona el material del objeto.' ) ],
+			];
+
+			campos.forEach( ( [ campo, kind, mensaje ] ) => {
+				const select = form.querySelector( `[name="${ campo }"]` );
+
+				if ( ! select ) {
+					return;
+				}
+
+				const cargado = catalogo && 'function' === typeof catalogo.isLoaded ? catalogo.isLoaded() : false;
+
+				// Lista cargada y vacía: el campo no existe para el cliente.
+				if ( catalogo && cargado && ! catalogo.hasOptions( kind ) ) {
+					return;
+				}
+
+				if ( '' === select.value ) {
+					errors[ campo ] = mensaje;
+				}
+			} );
+
+			const description = form.querySelector( '[name="description"]' );
+			const texto = description ? description.value.trim() : '';
+
+			if ( texto.length < 5 ) {
+				errors.description = t( 'errDescription', 'Describe el objeto: qué es y alguna seña que ayude a reconocerlo.' );
+			}
+
 			return { valid: Object.keys( errors ).length === 0, errors };
 		},
 

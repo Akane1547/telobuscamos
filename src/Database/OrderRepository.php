@@ -46,13 +46,16 @@ final class OrderRepository {
 				'full_name'    => (string) $customer['name'],
 				'email'        => (string) $customer['email'],
 				'phone'        => (string) $customer['phone'],
+				'object_type'     => (string) ( $customer['object_type'] ?? '' ),
+				'object_size'     => (string) ( $customer['object_size'] ?? '' ),
+				'object_material' => (string) ( $customer['object_material'] ?? '' ),
 				'description'  => (string) $customer['description'],
 				'status'       => OrderStatus::DRAFT,
 				'current_step' => 2,
 				'created_at'   => $now,
 				'updated_at'   => $now,
 			),
-			array( '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' )
+			array( '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' )
 		);
 
 		if ( false === $inserted ) {
@@ -179,9 +182,25 @@ final class OrderRepository {
 	 */
 	public static function is_step_complete( array $order, int $step ): bool {
 		if ( 1 === $step ) {
-			return '' !== (string) $order['full_name']
-				&& '' !== (string) $order['email']
-				&& '' !== (string) $order['phone'];
+			if ( '' === (string) $order['full_name'] || '' === (string) $order['email'] || '' === (string) $order['phone'] ) {
+				return false;
+			}
+
+			// Tipo, tamaño y material solo se exigen si el catálogo tiene
+			// opciones: una lista vacía esconde el campo en el formulario.
+			foreach ( \SimpleForm\Core\Catalog::KINDS as $kind ) {
+				if ( ! \SimpleForm\Core\Catalog::is_required( $kind ) ) {
+					continue;
+				}
+
+				$campo = \SimpleForm\Core\Catalog::FIELDS[ $kind ];
+
+				if ( '' === (string) ( $order[ $campo ] ?? '' ) ) {
+					return false;
+				}
+			}
+
+			return true;
 		}
 
 		if ( 2 === $step ) {
@@ -212,10 +231,16 @@ final class OrderRepository {
 
 		if ( self::is_step_complete( $order, 1 ) ) {
 			$step1 = array(
-				'name'        => (string) $order['full_name'],
-				'email'       => (string) $order['email'],
-				'phone'       => (string) $order['phone'],
-				'description' => (string) $order['description'],
+				'name'                 => (string) $order['full_name'],
+				'email'                => (string) $order['email'],
+				'phone'                => (string) $order['phone'],
+				'object_type'          => (string) $order['object_type'],
+				'object_type_label'    => \SimpleForm\Core\Catalog::label( 'types', (string) $order['object_type'] ),
+				'object_size'          => (string) $order['object_size'],
+				'object_size_label'    => \SimpleForm\Core\Catalog::label( 'sizes', (string) $order['object_size'] ),
+				'object_material'      => (string) $order['object_material'],
+				'object_material_label' => \SimpleForm\Core\Catalog::label( 'materials', (string) $order['object_material'] ),
+				'description'          => (string) $order['description'],
 			);
 		}
 

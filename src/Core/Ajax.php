@@ -30,6 +30,24 @@ class Ajax {
 	 */
 	const LIMIT_READS = 120;
 
+	/**
+	 * Largo mínimo de la descripción del objeto.
+	 */
+	const MIN_DESCRIPTION = 5;
+
+	/**
+	 * Mensaje por campo cuando falta elegir una opción del catálogo.
+	 *
+	 * @return array<string, string>
+	 */
+	private static function object_messages(): array {
+		return array(
+			'types'     => __( 'Selecciona qué tipo de objeto es.', 'simple-form' ),
+			'sizes'     => __( 'Selecciona el tamaño del objeto.', 'simple-form' ),
+			'materials' => __( 'Selecciona el material del objeto.', 'simple-form' ),
+		);
+	}
+
 	public function __construct() {
 		add_action( 'wp_ajax_simple_form_get_progress', array( $this, 'get_progress' ) );
 		add_action( 'wp_ajax_nopriv_simple_form_get_progress', array( $this, 'get_progress' ) );
@@ -51,6 +69,11 @@ class Ajax {
 
 		add_action( 'wp_ajax_simple_form_geocode', array( $this, 'geocode' ) );
 		add_action( 'wp_ajax_nopriv_simple_form_geocode', array( $this, 'geocode' ) );
+
+		// Catálogos del objeto: el formulario los pide por AJAX, no los lleva
+		// impresos en la página.
+		add_action( 'wp_ajax_simple_form_get_catalogs', array( $this, 'get_catalogs' ) );
+		add_action( 'wp_ajax_nopriv_simple_form_get_catalogs', array( $this, 'get_catalogs' ) );
 	}
 
 	/**
@@ -323,6 +346,26 @@ class Ajax {
 	}
 
 	/**
+	 * Devuelve los catálogos del objeto (tipo, tamaño y material).
+	 *
+	 * El formulario los pide al cargar: así las opciones no viajan dentro del
+	 * HTML de la página y cambiarlas en wp-admin se ve sin tocar la página.
+	 * Solo salen ids y etiquetas, que son información pública del sitio.
+	 */
+	public function get_catalogs(): void {
+		$this->verify_request_nonce();
+		$this->guard_rate_limit( 'get_catalogs', self::LIMIT_READS );
+
+		$listas = array();
+
+		foreach ( Catalog::KINDS as $kind ) {
+			$listas[ $kind ] = array_values( Catalog::items( $kind ) );
+		}
+
+		wp_send_json_success( array( 'catalogs' => $listas ) );
+	}
+
+	/**
 	 * Guarda el Paso 1 en el pedido persistido.
 	 */
 	public function save_step1(): void {
@@ -343,11 +386,60 @@ class Ajax {
 			wp_send_json_error( array( 'message' => __( 'El teléfono debe tener 9 dígitos y empezar con 9 (celular chileno).', 'simple-form' ) ), 422 );
 		}
 
-		$customer = array(
-			'name'        => $name,
-			'email'       => $email,
-			'phone'       => $phone,
-			'description' => sanitize_textarea_field( wp_unslash( $_POST['description'] ?? '' ) ),
+		// Tipo, tamaño y material: se guarda el id de una entrada del catálogo,
+		// nunca texto libre. Si la lista está vacía el campo no se pide y queda
+		// en ''.
+		$objeto = array();
+
+		foreach ( Catalog::KINDS as $kind ) {
+			$campo = Catalog::FIELDS[ $kind ];
+			$valor = sanitize_key( wp_unslash( $_POST[ $campo ] ?? '' ) );
+
+			if ( ! Catalog::is_required( $kind ) ) {
+				$objeto[ $campo ] = '';
+
+				continue;
+			}
+
+			if ( ! Catalog::has( $kind, $valor ) ) {
+				$mensaje = (string) ( self::object_messages()[ $kind ] ?? __( 'Elige una opción de la lista.', 'simple-form' ) );
+
+				wp_send_json_error(
+					array(
+						'field'   => $campo,
+						'message' => $mensaje,
+						'errors'  => array( $campo => $mensaje ),
+					),
+					422
+				);
+			}
+
+			$objeto[ $campo ] = $valor;
+		}
+
+		$description = sanitize_textarea_field( wp_unslash( $_POST['description'] ?? '' ) );
+
+		if ( mb_strlen( trim( $description ) ) < self::MIN_DESCRIPTION ) {
+			$mensaje = __( 'Describe el objeto: qué es y alguna seña que ayude a reconocerlo.', 'simple-form' );
+
+			wp_send_json_error(
+				array(
+					'field'   => 'description',
+					'message' => $mensaje,
+					'errors'  => array( 'description' => $mensaje ),
+				),
+				422
+			);
+		}
+
+		$customer = array_merge(
+			array(
+				'name'        => $name,
+				'email'       => $email,
+				'phone'       => $phone,
+				'description' => $description,
+			),
+			$objeto
 		);
 
 		$order = $this->find_order_by_session( $session_id );
@@ -364,11 +456,14 @@ class Ajax {
 			OrderRepository::update(
 				(int) $order['id'],
 				array(
-					'full_name'    => $customer['name'],
-					'email'        => $customer['email'],
-					'phone'        => $customer['phone'],
-					'description'  => $customer['description'],
-					'current_step' => max( 2, (int) $order['current_step'] ),
+					'full_name'       => $customer['name'],
+					'email'           => $customer['email'],
+					'phone'           => $customer['phone'],
+					'object_type'     => $customer['object_type'],
+					'object_size'     => $customer['object_size'],
+					'object_material' => $customer['object_material'],
+					'description'     => $customer['description'],
+					'current_step'    => max( 2, (int) $order['current_step'] ),
 				)
 			);
 

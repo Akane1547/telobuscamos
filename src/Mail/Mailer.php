@@ -155,6 +155,29 @@ final class Mailer {
 	}
 
 	/**
+	 * "Llaves · Pequeño · Metal" a partir de los ids guardados en el pedido.
+	 *
+	 * @param array $order Pedido.
+	 * @return string Vacío si el pedido no trae objeto (pedidos anteriores).
+	 */
+	private static function object_line( array $order ): string {
+		$partes = array();
+
+		foreach ( \SimpleForm\Core\Catalog::KINDS as $kind ) {
+			$campo = \SimpleForm\Core\Catalog::FIELDS[ $kind ];
+			$id    = (string) ( $order[ $campo ] ?? '' );
+
+			if ( '' === $id ) {
+				continue;
+			}
+
+			$partes[] = \SimpleForm\Core\Catalog::label( $kind, $id );
+		}
+
+		return implode( ' · ', $partes );
+	}
+
+	/**
 	 * Correo al administrador: hay un pedido confirmado que coordinar.
 	 *
 	 * Lleva los datos de contacto del comprador y la ubicación a propósito: es
@@ -238,6 +261,12 @@ final class Mailer {
 		$lineas[] = '  ' . __( 'Nombre:', 'simple-form' ) . ' ' . (string) ( $order['full_name'] ?? '' );
 		$lineas[] = '  ' . __( 'Correo:', 'simple-form' ) . ' ' . (string) ( $order['email'] ?? '' );
 		$lineas[] = '  ' . __( 'Teléfono:', 'simple-form' ) . ' ' . (string) ( $order['phone'] ?? '' );
+
+		$objeto = self::object_line( $order );
+
+		if ( '' !== $objeto ) {
+			$lineas[] = '  ' . __( 'Objeto:', 'simple-form' ) . ' ' . $objeto;
+		}
 
 		$desc = (string) ( $order['description'] ?? '' );
 

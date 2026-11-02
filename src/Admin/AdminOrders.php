@@ -191,7 +191,20 @@ final class AdminOrders {
 		$this->row( __( 'Nombre', 'simple-form' ), (string) $order['full_name'] );
 		$this->row( __( 'Correo', 'simple-form' ), (string) $order['email'] );
 		$this->row( __( 'Teléfono', 'simple-form' ), (string) $order['phone'] );
-		$this->row( __( 'Descripción', 'simple-form' ), (string) $order['description'] );
+		$this->row(
+			__( 'Objeto', 'simple-form' ),
+			implode(
+				' · ',
+				array_filter(
+					array(
+						\SimpleForm\Core\Catalog::label( 'types', (string) $order['object_type'] ),
+						\SimpleForm\Core\Catalog::label( 'sizes', (string) $order['object_size'] ),
+						\SimpleForm\Core\Catalog::label( 'materials', (string) $order['object_material'] ),
+					)
+				)
+			)
+		);
+		$this->row( __( 'Descripción del objeto', 'simple-form' ), (string) $order['description'] );
 		echo '</tbody></table>';
 
 		echo '<h2>' . esc_html__( 'Servicio y ubicación', 'simple-form' ) . '</h2>';

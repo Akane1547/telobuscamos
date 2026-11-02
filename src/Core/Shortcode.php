@@ -115,12 +115,38 @@ class Shortcode {
 							<span class="pn-form__error" data-error-for="phone"></span>
 						</div>
 
-						<div class="pn-form__row">
-							<label for="pn-description" class="pn-form__label">
-								<?php esc_html_e( 'Descripción', 'simple-form' ); ?> <span class="pn-form__optional"><?php esc_html_e( '(opcional)', 'simple-form' ); ?></span>
-							</label>
-							<textarea id="pn-description" name="description" class="pn-form__input pn-form__textarea" placeholder="<?php echo esc_attr__( 'Motivo del pago...', 'simple-form' ); ?>" rows="3"></textarea>
+						<?php // Tipo, tamaño y material salen del catálogo del admin y llegan por AJAX: acá solo va el select vacío. ?>
+						<div class="pn-form__row" data-catalog-row="types">
+							<label for="pn-object-type" class="pn-form__label"><?php esc_html_e( '¿Qué tipo de objeto es?', 'simple-form' ); ?></label>
+							<select id="pn-object-type" name="object_type" class="pn-form__input pn-form__select" data-catalog="types" aria-required="true">
+								<option value=""><?php esc_html_e( 'Selecciona una opción', 'simple-form' ); ?></option>
+							</select>
+							<span class="pn-form__error" data-error-for="object_type"></span>
 						</div>
+
+						<div class="pn-form__row">
+							<label for="pn-description" class="pn-form__label"><?php esc_html_e( 'Descripción del objeto', 'simple-form' ); ?></label>
+							<textarea id="pn-description" name="description" class="pn-form__input pn-form__textarea" placeholder="<?php echo esc_attr__( 'Ej: llavero con una cinta roja, un dije de plata', 'simple-form' ); ?>" rows="3" maxlength="1000" aria-required="true"></textarea>
+							<span class="pn-form__error" data-error-for="description"></span>
+						</div>
+
+						<div class="pn-form__row" data-catalog-row="sizes">
+							<label for="pn-object-size" class="pn-form__label"><?php esc_html_e( 'Tamaño del objeto', 'simple-form' ); ?></label>
+							<select id="pn-object-size" name="object_size" class="pn-form__input pn-form__select" data-catalog="sizes" aria-required="true">
+								<option value=""><?php esc_html_e( 'Selecciona una opción', 'simple-form' ); ?></option>
+							</select>
+							<span class="pn-form__error" data-error-for="object_size"></span>
+						</div>
+
+						<div class="pn-form__row" data-catalog-row="materials">
+							<label for="pn-object-material" class="pn-form__label"><?php esc_html_e( 'Material del objeto', 'simple-form' ); ?></label>
+							<select id="pn-object-material" name="object_material" class="pn-form__input pn-form__select" data-catalog="materials" aria-required="true">
+								<option value=""><?php esc_html_e( 'Selecciona una opción', 'simple-form' ); ?></option>
+							</select>
+							<span class="pn-form__error" data-error-for="object_material"></span>
+						</div>
+
+						<p class="pn-form__notice" data-catalog-error hidden></p>
 					</section>
 
 					<!-- PASO 2: Servicio y ubicación -->
@@ -238,7 +264,8 @@ class Shortcode {
 								<div class="pn-receipt__row"><dt><?php esc_html_e( 'Nombre', 'simple-form' ); ?></dt><dd id="pn-receipt-name">—</dd></div>
 								<div class="pn-receipt__row"><dt><?php esc_html_e( 'Correo', 'simple-form' ); ?></dt><dd id="pn-receipt-email">—</dd></div>
 								<div class="pn-receipt__row"><dt><?php esc_html_e( 'Teléfono', 'simple-form' ); ?></dt><dd id="pn-receipt-phone">—</dd></div>
-								<div class="pn-receipt__row"><dt><?php esc_html_e( 'Descripción', 'simple-form' ); ?></dt><dd id="pn-receipt-description">—</dd></div>
+								<div class="pn-receipt__row"><dt><?php esc_html_e( 'Objeto', 'simple-form' ); ?></dt><dd id="pn-receipt-object">—</dd></div>
+								<div class="pn-receipt__row"><dt><?php esc_html_e( 'Descripción del objeto', 'simple-form' ); ?></dt><dd id="pn-receipt-description">—</dd></div>
 							</dl>
 
 							<h4 class="pn-receipt__subtitle"><?php esc_html_e( 'Detalle del servicio', 'simple-form' ); ?></h4>

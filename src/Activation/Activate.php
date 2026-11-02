@@ -29,6 +29,7 @@ final class Activate {
         self::check_requirements();
         self::create_tables();
         AccountPages::install();
+        \SimpleForm\Core\Catalog::install();
 
         // La limpieza programada: borradores abandonados y punteros vencidos.
         Cleanup::maybe_schedule();

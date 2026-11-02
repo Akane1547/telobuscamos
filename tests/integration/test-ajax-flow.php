@@ -133,10 +133,13 @@ list( $status, $json ) = call(
 	$ajax,
 	'save_step1',
 	array(
-		'name'        => 'Ana Pérez',
-		'email'       => 'ana@example.test',
-		'phone'       => '912345678',
-		'description' => 'Prueba de integración',
+		'name'            => 'Ana Pérez',
+		'email'           => 'ana@example.test',
+		'phone'           => '912345678',
+		'object_type'     => 'llaves',
+		'object_size'     => 'pequeno',
+		'object_material' => 'metal',
+		'description'     => 'Prueba de integración',
 	)
 );
 check( 'success = true', $json['success'], true );
@@ -162,7 +165,20 @@ check( 'no guarda el nombre', isset( $raw['name'] ) || isset( $raw['step1'] ), f
 check( 'no guarda el correo', isset( $raw['email'] ) || isset( $raw['step2'] ), false );
 
 echo "\n=== Repetir el paso 1 reutiliza el pedido ===\n";
-list( $status, $json ) = call( $ajax, 'save_step1', array( 'session_id' => $session, 'name' => 'Ana P. Modificado', 'email' => 'ana@example.test', 'phone' => '912345678' ) );
+list( $status, $json ) = call(
+	$ajax,
+	'save_step1',
+	array(
+		'session_id'      => $session,
+		'name'            => 'Ana P. Modificado',
+		'email'           => 'ana@example.test',
+		'phone'           => '912345678',
+		'object_type'     => 'llaves',
+		'object_size'     => 'pequeno',
+		'object_material' => 'metal',
+		'description'     => 'Prueba de integración',
+	)
+);
 check( 'mismo session_id', $json['data']['session_id'], $session );
 check(
 	'sigue habiendo un solo pedido nuevo',
@@ -345,7 +361,11 @@ check( 'current_step', $json['data']['progress']['current_step'], 4 );
 check( 'status del pedido en el payload', $json['data']['progress']['status'], 'pending' );
 check( 'etiqueta del estado ya traducida', $json['data']['progress']['status_label'], 'Pago pendiente' );
 check( 'la fecha del recibo llega del servidor', (bool) preg_match( '/\d/', (string) $json['data']['progress']['date'] ), true );
-check( 'step1 tiene las 4 claves', array_keys( $json['data']['progress']['step1'] ), array( 'name', 'email', 'phone', 'description' ) );
+check(
+	'step1 trae los datos de contacto y el objeto',
+	array_keys( $json['data']['progress']['step1'] ),
+	array( 'name', 'email', 'phone', 'object_type', 'object_type_label', 'object_size', 'object_size_label', 'object_material', 'object_material_label', 'description' )
+);
 check( 'step2 tiene las 6 claves', array_keys( $json['data']['progress']['step2'] ), array( 'service_id', 'service_label', 'lat', 'lng', 'radius_km', 'estimated_price' ) );
 check( 'step3 tiene las 2 claves', array_keys( $json['data']['progress']['step3'] ), array( 'payment_method', 'final_price' ) );
 check( 'session_id en la respuesta', $json['data']['session_id'], $session );
@@ -405,10 +425,14 @@ list( $status, $json ) = call(
 	$ajax,
 	'save_step1',
 	array(
-		'session_id' => $session,
-		'name'       => 'Otro Nombre',
-		'email'      => 'otro@example.test',
-		'phone'      => '911111111',
+		'session_id'      => $session,
+		'name'            => 'Otro Nombre',
+		'email'           => 'otro@example.test',
+		'phone'           => '911111111',
+		'object_type'     => 'llaves',
+		'object_size'     => 'pequeno',
+		'object_material' => 'metal',
+		'description'     => 'Otro objeto',
 	)
 );
 

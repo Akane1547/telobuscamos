@@ -1174,9 +1174,12 @@ try {
 			'name'     => 'Nombre Inyectado',
 			'email'    => 'sec-inyectado@example.com',
 			'phone'    => '900000001',
+			'object_type'     => 'llaves',
+			'object_size'     => 'pequeno',
+			'object_material' => 'metal',
 			// El ataque: el cliente dice ser otra cuenta.
 			'user_id'  => (string) $SF_B_ID,
-			'description' => 'prueba',
+			'description' => 'prueba de objeto',
 		),
 		$jar
 	);

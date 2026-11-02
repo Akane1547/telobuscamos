@@ -260,6 +260,37 @@ async function main() {
 		check( 'el buscador de direcciones está', await evaluar( "!!document.querySelector('#pn-address')" ), true );
 
 		// ------------------------------------------------------------------
+		console.log( '\n=== Catálogos del objeto (AJAX) ===' );
+
+		// Los selects nacen vacíos: las opciones llegan del endpoint.
+		let catalogoListo = false;
+
+		for ( let i = 0; i < 20 && ! catalogoListo; i++ ) {
+			catalogoListo = await evaluar( "!!document.querySelector('select[data-catalog=\"types\"]') && document.querySelector('select[data-catalog=\"types\"]').options.length > 1" );
+			if ( ! catalogoListo ) {
+				await esperar( 300 );
+			}
+		}
+
+		check( 'el select de tipo se llena solo', catalogoListo, true );
+		check(
+			'el tamaño y el material también',
+			await evaluar( "document.querySelector('select[data-catalog=\"sizes\"]').options.length > 1 && document.querySelector('select[data-catalog=\"materials\"]').options.length > 1" ),
+			true
+		);
+		// Se mira la respuesta del servidor, no el DOM: el DOM ya tiene las
+		// opciones porque el JS las acaba de inyectar.
+		const htmlCrudo = await ( await fetch( BASE ) ).text();
+
+		check( 'las opciones NO vienen en el HTML del servidor', /<option value="llaves"/.test( htmlCrudo ), false );
+		check( 'el select viaja vacío en el HTML', /data-catalog="types"/.test( htmlCrudo ), true );
+		check(
+			'la primera opción es el marcador vacío',
+			await evaluar( "document.querySelector('select[data-catalog=\"types\"]').options[0].value" ),
+			''
+		);
+
+		// ------------------------------------------------------------------
 		console.log( '\n=== Validación del paso 1 ===' );
 
 		await evaluar( `(() => {
@@ -277,6 +308,10 @@ async function main() {
 		check( 'marca el nombre', typeof vacio.errors.name, 'string' );
 		check( 'marca el correo', typeof vacio.errors.email, 'string' );
 		check( 'marca el teléfono', typeof vacio.errors.phone, 'string' );
+		check( 'marca el tipo de objeto', typeof vacio.errors.object_type, 'string' );
+		check( 'marca el tamaño', typeof vacio.errors.object_size, 'string' );
+		check( 'marca el material', typeof vacio.errors.object_material, 'string' );
+		check( 'marca la descripción del objeto', typeof vacio.errors.description, 'string' );
 
 		const telefonos = await evaluar( `(() => {
 			const form = document.querySelector('#pn-payment-form');
