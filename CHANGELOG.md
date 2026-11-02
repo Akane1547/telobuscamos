@@ -1,5 +1,15 @@
 # Cambios
 
+## af10505 - Feat: medios de pago propios + fixes del radio
+
+- **src/Payments/Methods.php** (nuevo): registro de medios del sitio = pasarelas de `Gateways::REGISTRY` + medios propios del admin (`simple_form_custom_methods`: id, nombre, "cómo pagar"; tope 20). El id se deriva del nombre la primera vez y **no cambia** al renombrar (es lo que guardan los pedidos). Un medio propio no puede duplicar una pasarela, ni por id (`mercado-pago`/`mercado_pago`) ni por nombre visible.
+- **Un medio propio no cobra online**: `save_step3` deja el pedido `pending` con `current_step` 4 y responde `manual: true` + instrucciones, sin pasarela ni redirección. `to_progress` agrega `payment_method_label` y `manual_instructions`; el recibo suma la fila "Medio de pago" y el bloque "Cómo pagar"; **Pedidos** gana el botón *Marcar pago recibido* (nonce + capacidad + `OrderStatus::can_transition`, sella `paid_at`) y rechaza confirmar a mano un cobro online (`error=not-manual`).
+- **src/Admin/AdminPayments.php + assets/js/admin-payments.js + assets/css/admin-payments.css**: el select de alta suma "Medio propio (transferencia, efectivo…)", que agrega filas de nombre + "cómo pagar" (varias, sin consumir la opción). Un solo guardado: pasarelas con credenciales por modo y propias con su nombre/nota; la lista habilitada es lo que quedó en pantalla y quitar una pasarela conserva sus claves.
+- **Fix crítico**: `is_step_complete()` exigía `radius_km >= 0.1` a mano; con un rango de 10 a 100 m ningún pedido completaba el Paso 2, el resumen recibía `step2` nulo y el formulario se trababa al avanzar (además de un 403 del Paso 3). Ahora usa `Radius::contains()`; `updateSummary()` y el stepper toleran `step2` nulo.
+- **Fix**: `read_radius_km()` redondeaba antes de validar (0,005 km pasaba como 0,01).
+- **tests**: `MethodsTest` (nuevo), `test-manual-payment.php` (nuevo, 60+ comprobaciones del alta y del cobro manual), regresión del radio en `test-radius`, claves nuevas de `step3` en `test-ajax-flow`. 197 unitarias, 11 suites de integración, 182 de seguridad y front en verde.
+- **souls.md §52**: modelo de medios de pago, cobro manual y lo que el servidor no acepta. Versión 1.6.0.
+
 ## 27ed329 - Feat: medios de pago con alta/baja y credenciales por modo
 
 - **src/Payments/PaymentConfig.php**: la opción de credenciales pasa a guardar un juego por modo (`[gateway][mode]`, `[gateway][sandbox]`, `[gateway][production]`). Guardar en un modo solo escribe ese juego, así que alternar pruebas/comercial ya no pisa las claves del otro. `save()` en producción sin HTTPS **guarda** y devuelve `https` (antes descartaba todo y las claves se perdían); `mode()` es el modo efectivo y `desired_mode()` lo que eligió el admin; `has_keys()`/`keys_count()` alimentan el resumen de la pantalla; `install()` migra el formato plano viejo al juego del modo que tenía (idempotente, corre en `wp_loaded`).
