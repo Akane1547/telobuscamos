@@ -1,5 +1,14 @@
 # Cambios
 
+## 3ee998f - Feat: PayPal como pasarela real
+
+- **src/Payments/PayPalGateway.php** (nuevo): Orders v2. `create_payment()` pide el token (Basic + client_credentials), crea la orden con `intent: CAPTURE`, `custom_id` = id del pedido y `PayPal-Request-Id` por borrador, guarda el id externo y devuelve el enlace `approve`. `fetch_payment()` consulta la orden y **captura** si está APPROVED (tolera `ORDER_ALREADY_CAPTURED`, conserva el `custom_id` si la captura no lo repite). `map_status()` traduce los 11 estados.
+- **Moneda**: PayPal no admite CLP, así que el monto se convierte a USD con `usd_rate` (CLP por USD) que fija el administrador. Sin tasa válida no se crea el pago: no se inventa un tipo de cambio.
+- **Registro y pantalla**: `Gateways::REGISTRY` suma `paypal` (`client_id`, `client_secret`, `usd_rate`); el alta es la misma de *Medios de pago* (credenciales cifradas por modo en wp_options) con su nota de moneda. La tasa se valida al guardar (`error=rate`). Se saca "medio propio" del selector de alta; los que ya existan siguen funcionando.
+- **Confirmación al volver**: `Ajax::sync_payment` (nonce + límite) toma el pedido de la sesión y llama a `PaymentProcessor::apply()`; `stepper.handleReturn` lo invoca antes de preguntar el estado. Nunca acepta un id externo del navegador.
+- **tests**: `PayPalGatewayTest` (conversión, cuerpo de la orden, estados, sin credenciales/tasa), `test-paypal.php` (credenciales por modo, Paso 3 con la API simulada, captura y aprobación al volver, nonce, sesión inventada, medios no habilitados), y `GatewaysTest`/`PaymentConfigTest`/`test-admin-screen` actualizados al registro nuevo. 215 unitarias, 12 suites de integración, 182 de seguridad y front en verde.
+- **souls.md §52.5**: flujo de PayPal y el pendiente del webhook con firma. Versión 1.7.0.
+
 ## af10505 - Feat: medios de pago propios + fixes del radio
 
 - **src/Payments/Methods.php** (nuevo): registro de medios del sitio = pasarelas de `Gateways::REGISTRY` + medios propios del admin (`simple_form_custom_methods`: id, nombre, "cómo pagar"; tope 20). El id se deriva del nombre la primera vez y **no cambia** al renombrar (es lo que guardan los pedidos). Un medio propio no puede duplicar una pasarela, ni por id (`mercado-pago`/`mercado_pago`) ni por nombre visible.
