@@ -1,5 +1,23 @@
 # Cambios
 
+## 47412ce - Feat: el paso 1 pide el objeto (tipo, descripción, tamaño y material)
+
+- **src/Core/Catalog.php** (nuevo): la única fuente de verdad de las tres listas. El administrador las edita, el formulario manda el **id** y el servidor comprueba que exista. `normalize()` pasa el id por `sanitize_title()`, descarta filas vacías y repetidas, rellena la etiqueta con el id si falta y corta en 60 entradas por lista (la opción se autoloada en cada petición).
+- **src/Admin/AdminCatalogs.php** + **assets/js/admin-catalogs.js** (nuevos): pantalla *Catálogos del objeto* con las tres listas, `manage_options`, nonce propio y el mismo patrón de filas clonables que la pantalla de servicios.
+- **src/Core/Ajax.php**: endpoint `simple_form_get_catalogs` (nonce + `LIMIT_READS`) que devuelve solo ids y etiquetas. `save_step1` valida tipo, tamaño y material contra el catálogo —un id inventado o texto libre responde 422 con `errors[campo]`, que el formulario ya sabe pintar en el campo— y pide una descripción del objeto de 5 caracteres o más. Si una lista está vacía, ese campo no se exige y se guarda en ''.
+- **src/Core/Shortcode.php**: el Paso 1 reemplaza "Descripción" por los cuatro campos nuevos. Los selects viajan **vacíos** en el HTML: las opciones llegan por AJAX. El recibo suma la fila "Objeto".
+- **assets/js/catalog.js** (nuevo): pide las listas una vez, llena los selects, esconde el campo cuya lista venga vacía y deja un aviso visible si la carga falla.
+- **assets/js/stepper.js**: espera los catálogos antes de validar y de retomar la sesión; sin eso se validaba un select todavía vacío y el servidor rechazaba con un mensaje que parecía un error del cliente.
+- **assets/js/validator.js**: exige tipo, tamaño, material y descripción cuando corresponde; una lista **cargada y vacía** deja el campo opcional (y mientras no cargó, no lo da por bueno).
+- **assets/js/receipt.js**: muestra "tipo · tamaño · material" en el recibo.
+- **src/Database/Database.php**: `DB_VERSION = 4` y `object_type`, `object_size`, `object_material` en `sf_orders`. **OrderRepository** los guarda, los devuelve en el snapshot del paso 1 (con etiqueta) y solo considera completo el paso 1 si el catálogo tiene opciones.
+- **src/Mail/Mailer.php** y **src/Admin/AdminOrders.php**: el correo al administrador y el detalle del pedido dicen qué objeto hay que buscar ("Celular · Mediano · Electrónico").
+- **src/Core/Plugin.php** y **src/Activation/Activate.php**: siembran los catálogos por defecto una sola vez; si el administrador vacía una lista a propósito, no se vuelve a llenar.
+- **tests/unit/CatalogTest.php** (nuevo): normalización, tope, entrada borrada del catálogo, siembra única.
+- **tests/integration/test-catalogs.php** (nuevo): endpoint con y sin nonce, ids válidos guardados en la fila, id inventado y texto libre rechazados, descripción corta rechazada, lista vacía que deja el campo opcional, y el guardado del admin con y sin capacidad y nonce.
+- **tests/integration/test-ajax-flow.php**, **tests/front/smoke.mjs** y la suite de seguridad: payloads con el objeto, claves nuevas del snapshot, y comprobación de que los selects se llenan por AJAX y **no** traen opciones en el HTML del servidor.
+- **simple-form.php** y **readme.txt**: versión 1.3.0.
+
 ## cd40b2a - Feat: confirmar el correo, recuperar contraseña y editar el perfil
 
 - **src/Account/Confirmation.php** (nuevo): la cuenta nace pendiente y se activa con un token de un solo uso, guardado hasheado con `wp_salt('auth')` y con vencimiento de 24 h. Si alguien lee la tabla de user meta no puede reconstruir el enlace.
