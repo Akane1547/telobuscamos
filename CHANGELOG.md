@@ -1,5 +1,14 @@
 # Cambios
 
+## 57745ac - Fix: el rango del radio llega al formulario y un guardado rechazado no se pierde
+
+Reporte del dueño: con 10 m de mínimo, 100 m de máximo y paso 10 "no se cambia en el formulario". Tres causas:
+
+- **assets/js/config.js**: no publicaba `radius` en `window.SimpleForm`, así que `validator.js` usaba siempre su respaldo `{ minKm: 0.1, maxKm: 1 }`. Con el rango de fábrica coincidía por casualidad; con cualquier otro, el validador del navegador aceptaba o rechazaba de más. Ahora el rango viaja con el resto de la config.
+- **src/Admin/AdminRadius.php**: un guardado rechazado redirigía sin conservar lo escrito y la pantalla volvía con los valores guardados; el siguiente intento guardaba esos (por eso solo cambió el paso y el rango no). Ahora el intento se guarda en un transient por usuario (5 min, se borra al mostrarlo) y el aviso dice los números: "el paso ... no puede superar el rango disponible (90 m), y escribiste 100 m".
+- **assets/js/ui.js + stepper.js**: `fillStepData()` recorta el radio guardado al rango vigente (leyendo de vuelta lo que el slider aceptó) y escribe el mismo valor en el campo oculto, la etiqueta y el resumen; devuelve `radiusAdjusted`. `restoreSession()` pinta el resumen antes de rellenar y, si hubo ajuste, vuelve al Paso 2 para que el mapa pida el precio de nuevo con el radio vigente. Un `input` sintético en el slider deja que map.js recalcule círculo, precio y resumen por su camino normal.
+- **tests**: caso exacto del reporte en `test-radius.php` (rechazo que conserva 10/100/100 y guardado de 10/100/10 con el HTML del slider correcto); `test-ajax-flow.php` fija el rango de fábrica y lo restaura (dependía del rango del sitio); el smoke verifica el recorte en slider, etiqueta, campo oculto y resumen. 185 unitarias, 10 suites de integración, 182 de seguridad y front en verde.
+
 ## f7dd11e - Feat: menú general SimpleForm, radio configurable y buscador sin direcciones viejas
 
 - **src/Admin/AdminMenu.php** (nuevo): menú de primer nivel *SimpleForm* (prioridad 9) con una portada que enlaza a cada sección. **Servicios de pago**, **Medios de pago**, **Catálogos del objeto** y **Pedidos** pasan de menús sueltos a submenús, en ese orden (prioridades 10 a 14). Los slugs no cambian.
