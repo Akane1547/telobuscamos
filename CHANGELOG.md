@@ -1,5 +1,13 @@
 # Cambios
 
+## 27ed329 - Feat: medios de pago con alta/baja y credenciales por modo
+
+- **src/Payments/PaymentConfig.php**: la opción de credenciales pasa a guardar un juego por modo (`[gateway][mode]`, `[gateway][sandbox]`, `[gateway][production]`). Guardar en un modo solo escribe ese juego, así que alternar pruebas/comercial ya no pisa las claves del otro. `save()` en producción sin HTTPS **guarda** y devuelve `https` (antes descartaba todo y las claves se perdían); `mode()` es el modo efectivo y `desired_mode()` lo que eligió el admin; `has_keys()`/`keys_count()` alimentan el resumen de la pantalla; `install()` migra el formato plano viejo al juego del modo que tenía (idempotente, corre en `wp_loaded`).
+- **src/Admin/AdminPayments.php** reescrito: lista de medios con una fila por medio (selector de modo, credenciales, estado de cada juego), botón *Añadir medio de pago* con los proveedores registrados que faltan, y *Quitar* por fila. Un solo `admin_post_sf_save_payments` con nonce y `manage_options`; la lista habilitada es exactamente lo que quedó en pantalla y dar de baja un medio no borra sus claves. Las acciones viejas `sf_save_payment_methods` / `sf_save_payment_credentials` desaparecen.
+- **assets/js/admin-payments.js** (nuevo): clona la plantilla del medio elegido al añadirlo y lo devuelve a la lista al quitarlo; sin índices que renumerar.
+- **wp-config.php** del sitio: las tres constantes de Mercado Pago (dos vacías y `MODE = 'sandbox'`) quedan comentadas con una nota; bloqueaban el selector de modo del panel. La precedencia de constantes no cambia: si se descomenta una, manda.
+- **tests**: `PaymentConfigTest` con juegos por modo, migración y `has_keys`; `test-admin-screen.php` reescrito (alta con claves, cambio de modo en ambos sentidos sin perder claves, baja sin borrar, payload sucio, pantalla sin secretos) y cubriendo los dos caminos: modo manejado por el panel o fijado por constante. 188 unitarias, 10 suites de integración, 182 de seguridad y front en verde.
+
 ## 57745ac - Fix: el rango del radio llega al formulario y un guardado rechazado no se pierde
 
 Reporte del dueño: con 10 m de mínimo, 100 m de máximo y paso 10 "no se cambia en el formulario". Tres causas:
