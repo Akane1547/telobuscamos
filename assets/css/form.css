@@ -745,6 +745,26 @@
 	font-weight: 800;
 }
 
+/* "Cómo pagar" de un medio propio (transferencia, efectivo): el texto lo
+   escribe el administrador y puede traer saltos de línea. */
+.pn-receipt__note {
+	margin-top: 18px;
+	padding: 14px 16px;
+	border: 1px solid var(--pn-border, rgba(0, 0, 0, 0.12));
+	border-radius: 10px;
+	background: var(--pn-surface, rgba(255, 198, 0, 0.06));
+}
+
+.pn-receipt__note .pn-receipt__subtitle {
+	margin-top: 0;
+}
+
+.pn-receipt__note p {
+	margin: 6px 0 0;
+	white-space: pre-line;
+	line-height: 1.5;
+}
+
 .pn-receipt__actions {
 	margin-top: 20px;
 	text-align: right;

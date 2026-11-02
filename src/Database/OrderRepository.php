@@ -204,10 +204,17 @@ final class OrderRepository {
 		}
 
 		if ( 2 === $step ) {
+			$radio = (float) $order['radius_km'];
+
+			// El mínimo lo fija el administrador (SimpleForm → Radio de
+			// búsqueda). Antes estaba escrito 0.1 acá: con un rango de 10 a
+			// 100 metros ningún pedido completaba el Paso 2 y el formulario se
+			// trababa al avanzar.
 			return '' !== (string) $order['service_id']
 				&& null !== $order['lat']
 				&& null !== $order['lng']
-				&& (float) $order['radius_km'] >= 0.1;
+				&& $radio > 0
+				&& \SimpleForm\Core\Radius::contains( $radio );
 		}
 
 		return false;
@@ -256,10 +263,20 @@ final class OrderRepository {
 		}
 
 		if ( '' !== (string) $order['payment_method'] ) {
+			$metodo = (string) $order['payment_method'];
+
 			$step3 = array(
-				'payment_method' => (string) $order['payment_method'],
-				'final_price'    => (int) $order['amount'],
+				'payment_method'       => $metodo,
+				'payment_method_label' => \SimpleForm\Payments\Methods::label( $metodo ),
+				'final_price'          => (int) $order['amount'],
 			);
+
+			// Un medio propio no cobra online: el cliente paga por fuera con las
+			// instrucciones del administrador y el pedido queda pendiente.
+			if ( \SimpleForm\Payments\Methods::is_manual( $metodo ) ) {
+				$step3['manual']          = true;
+				$step3['manual_instructions'] = \SimpleForm\Payments\Methods::note( $metodo );
+			}
 		}
 
 		return array(

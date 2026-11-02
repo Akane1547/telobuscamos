@@ -89,6 +89,10 @@ $ajax  = new $Ajax();
 $radio_before    = get_option( Radius::OPTION, null );
 $services_before = get_option( 'simple_form_services', null );
 
+global $wpdb;
+$tabla_pedidos = \SimpleForm\Database\Database::table_name( \SimpleForm\Database\Database::TABLE_ORDERS );
+$max_pedido    = (int) $wpdb->get_var( "SELECT MAX(id) FROM `{$tabla_pedidos}`" );
+
 try {
 	// ------------------------------------------------------------- defaults
 
@@ -165,6 +169,71 @@ try {
 
 	list( $status, $json ) = call( $ajax, 'calculate_price', array( 'service_id' => 'sf-radius-plan' ) + $santiago + array( 'radius_km' => 5.5 ) );
 	check( 'y 5,5 km sigue fuera de rango', $status, 422 );
+
+	// ------------------------------------- el paso 2 se completa con el rango
+
+	echo "\n=== con 10 m de mínimo el Paso 2 también se completa ===\n";
+
+	// Regresión: is_step_complete() exigía radius_km >= 0.1 (100 m) escrito a
+	// mano; con un rango de 10 a 100 m ningún pedido avanzaba del Paso 2.
+	update_option( Radius::OPTION, array( 'min_m' => 10, 'max_m' => 100, 'step_m' => 10 ) );
+
+	list( $status, $json ) = call(
+		$ajax,
+		'save_step1',
+		array(
+			'name'            => 'Radio Corto',
+			'email'           => 'radio.corto@example.test',
+			'phone'           => '912345690',
+			'object_type'     => 'llaves',
+			'object_size'     => 'pequeno',
+			'object_material' => 'metal',
+			'description'     => 'Llavero con cinta roja',
+		)
+	);
+
+	$session_corto = (string) ( $json['data']['session_id'] ?? '' );
+
+	check( 'paso 1 guardado', $status, null );
+
+	list( $status, $json ) = call(
+		$ajax,
+		'save_step2',
+		array(
+			'session_id' => $session_corto,
+			'service_id' => 'sf-radius-plan',
+			'lat'        => '-33.4489',
+			'lng'        => '-70.6693',
+			'radius_km'  => 0.01,
+		)
+	);
+
+	check( 'el radio mínimo del rango se acepta', $json['success'] ?? null, true );
+	check( 'y el Paso 2 queda completo', isset( $json['data']['progress']['step2'] ), true );
+	check( 'con el radio guardado', $json['data']['progress']['step2']['radius_km'] ?? null, 0.01 );
+
+	$draft_corto = \SimpleForm\Core\Session::find_draft_id( $session_corto );
+	$order_corto = '' !== (string) $draft_corto ? \SimpleForm\Database\OrderRepository::find_by_draft_id( $draft_corto ) : null;
+
+	check( 'is_step_complete() lo da por completo', \SimpleForm\Database\OrderRepository::is_step_complete( (array) $order_corto, 2 ), true );
+
+	// Un radio por debajo del mínimo sigue rechazándose.
+	list( $status, $json ) = call(
+		$ajax,
+		'save_step2',
+		array(
+			'session_id' => $session_corto,
+			'service_id' => 'sf-radius-plan',
+			'lat'        => '-33.4489',
+			'lng'        => '-70.6693',
+			'radius_km'  => 0.005,
+		)
+	);
+
+	check( 'por debajo del mínimo: 422', $status, 422 );
+
+	// Se deja el rango que espera la sección siguiente.
+	update_option( Radius::OPTION, array( 'min_m' => 100, 'max_m' => 1000, 'step_m' => 100 ) );
 
 	// -------------------------------------------------------------- wp-admin
 
@@ -280,7 +349,10 @@ try {
 		update_option( 'simple_form_services', $services_before );
 	}
 
-	echo "\nradio y servicios restaurados\n";
+	// Los borradores que crea la prueba no se quedan en el sitio.
+	$wpdb->query( $wpdb->prepare( "DELETE FROM `{$tabla_pedidos}` WHERE id > %d", $max_pedido ) );
+
+	echo "\nradio y servicios restaurados; pedidos de prueba borrados\n";
 }
 
 printf( "\n%s\n", 0 === $failures ? 'TODO OK' : "FALLAS: {$failures}" );

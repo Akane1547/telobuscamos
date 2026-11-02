@@ -11,6 +11,7 @@ use SimpleForm\Account\Phone;
 use SimpleForm\Database\OrderRepository;
 use SimpleForm\Payments\Gateway;
 use SimpleForm\Payments\Gateways;
+use SimpleForm\Payments\Methods;
 use SimpleForm\Payments\OrderStatus;
 use SimpleForm\Payments\PaymentConfig;
 
@@ -148,9 +149,15 @@ class Ajax {
 			return 0.0;
 		}
 
-		$radius = round( (float) $raw_radius, 2 );
+		$radius = (float) $raw_radius;
 
-		return Radius::contains( $radius ) ? $radius : 0.0;
+		// Se valida el valor tal como llegó: redondear primero convertía 0,005 km
+		// (5 m, por debajo del mínimo de 10 m) en 0,01 y lo daba por bueno.
+		if ( ! Radius::contains( $radius ) ) {
+			return 0.0;
+		}
+
+		return round( $radius, 2 );
 	}
 
 	/**
@@ -602,8 +609,9 @@ class Ajax {
 		}
 
 		// El medio tiene que estar activo en el admin: un ID que no esté en la
-		// lista (o que no exista en el registro) no se acepta desde el servidor.
-		if ( ! in_array( $payment_method, PaymentConfig::enabled_ids(), true ) ) {
+		// lista (ni exista como pasarela o como medio propio) no se acepta desde
+		// el servidor.
+		if ( ! Methods::has( $payment_method ) || ! in_array( $payment_method, PaymentConfig::enabled_ids(), true ) ) {
 			wp_send_json_error( array( 'message' => __( 'Ese medio de pago no está disponible.', 'simple-form' ) ), 422 );
 		}
 
@@ -640,6 +648,21 @@ class Ajax {
 
 		if ( null === $order ) {
 			wp_send_json_error( array( 'message' => __( 'No se pudo guardar el pedido.', 'simple-form' ) ), 500 );
+		}
+
+		// Un medio propio (transferencia, efectivo…) no cobra online: el pedido
+		// queda pendiente con su "cómo pagar" y el administrador lo confirma a
+		// mano desde Pedidos. No hay redirección.
+		if ( Methods::is_manual( $payment_method ) ) {
+			wp_send_json_success(
+				array(
+					'message'      => __( 'Pedido guardado. Sigue las instrucciones para completar el pago.', 'simple-form' ),
+					'session_id'   => $session_id,
+					'manual'       => true,
+					'instructions' => Methods::note( $payment_method ),
+					'progress'     => OrderRepository::to_progress( $order ),
+				)
+			);
 		}
 
 		// El pago lo crea la pasarela y solo ella puede decir a dónde va el

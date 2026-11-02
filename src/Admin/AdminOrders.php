@@ -1,9 +1,11 @@
 <?php
 /**
- * Pantalla de pedidos: listado y detalle, solo lectura.
+ * Pantalla de pedidos: listado y detalle.
  *
- * No edita montos ni estados: el estado lo mueve únicamente el webhook a
- * través de PaymentProcessor. Acá solo se consulta lo que quedó en la base.
+ * No edita montos ni el estado de un cobro online: eso lo mueve únicamente el
+ * webhook a través de PaymentProcessor. La única acción es marcar como pagado
+ * un pedido de un **medio propio** (transferencia, efectivo), que no cobra
+ * online y por eso no tiene webhook que lo confirme.
  */
 
 namespace SimpleForm\Admin;
@@ -11,7 +13,7 @@ namespace SimpleForm\Admin;
 use SimpleForm\Database\Database;
 use SimpleForm\Database\OrderRepository;
 use SimpleForm\Database\PaymentEventRepository;
-use SimpleForm\Payments\Gateways;
+use SimpleForm\Payments\Methods;
 use SimpleForm\Payments\OrderStatus;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -23,12 +25,17 @@ final class AdminOrders {
 	const MENU_SLUG = 'simple-form-orders';
 	const PER_PAGE  = 20;
 
+	/** Marcar como pagado un pedido de un medio propio (cobro fuera del sitio). */
+	const ACTION_MARK_PAID = 'sf_mark_order_paid';
+	const NONCE_MARK_PAID  = 'sf_mark_order_paid_nonce';
+
 	/**
 	 * Registra el menú.
 	 */
 	public function __construct() {
 		// Prioridad 14: último dentro del menú SimpleForm.
 		add_action( 'admin_menu', array( $this, 'register_menu' ), 14 );
+		add_action( 'admin_post_' . self::ACTION_MARK_PAID, array( $this, 'handle_mark_paid' ) );
 	}
 
 	/**
@@ -185,6 +192,9 @@ final class AdminOrders {
 			self::status_html( (string) $order['status'] )
 		);
 
+		$this->render_notices();
+		$this->render_mark_paid( $order );
+
 		echo '<h2>' . esc_html__( 'Cliente', 'simple-form' ) . '</h2>';
 		echo '<table class="form-table" role="presentation"><tbody>';
 		$this->row( __( 'Cuenta', 'simple-form' ), self::account_label( (int) $order['user_id'] ) );
@@ -226,8 +236,13 @@ final class AdminOrders {
 		echo '<table class="form-table" role="presentation"><tbody>';
 		$this->row(
 			__( 'Medio', 'simple-form' ),
-			'' !== (string) $order['payment_method'] ? Gateways::label( (string) $order['payment_method'] ) : ''
+			'' !== (string) $order['payment_method'] ? Methods::label( (string) $order['payment_method'] ) : ''
 		);
+
+		if ( '' !== (string) $order['payment_method'] && Methods::is_manual( (string) $order['payment_method'] ) ) {
+			$this->row( __( 'Cobro', 'simple-form' ), __( 'Manual: se confirma cuando llega el dinero.', 'simple-form' ) );
+			$this->row( __( 'Cómo pagar', 'simple-form' ), Methods::note( (string) $order['payment_method'] ) );
+		}
 		$this->row( __( 'Estado', 'simple-form' ), OrderStatus::label( (string) $order['status'] ) );
 		$this->row( __( 'ID de pago', 'simple-form' ), (string) $order['external_payment_id'] );
 		$this->row( __( 'Pagado', 'simple-form' ), self::format_date( $order['paid_at'] ) );
@@ -347,6 +362,128 @@ final class AdminOrders {
 		}
 
 		return (int) round( $metros / 1000 ) . ' km';
+	}
+
+	/**
+	 * Avisos del marcado manual.
+	 */
+	private function render_notices(): void {
+		// Solo avisos de pantalla tras una redirección nuestra; no deciden nada.
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended
+		$updated = isset( $_GET['updated'] ) ? sanitize_key( wp_unslash( $_GET['updated'] ) ) : '';
+		$error   = isset( $_GET['error'] ) ? sanitize_key( wp_unslash( $_GET['error'] ) ) : '';
+		// phpcs:enable
+
+		if ( 'paid' === $updated ) {
+			printf(
+				'<div class="notice notice-success is-dismissible"><p>%s</p></div>',
+				esc_html__( 'Pedido marcado como pagado.', 'simple-form' )
+			);
+		}
+
+		$errores = array(
+			'not-manual' => __( 'Ese pedido se cobra online: su estado lo confirma la pasarela.', 'simple-form' ),
+			'state'      => __( 'El pedido no está en un estado que se pueda marcar como pagado.', 'simple-form' ),
+			'not-found'  => __( 'Ese pedido no existe.', 'simple-form' ),
+		);
+
+		if ( '' !== $error && isset( $errores[ $error ] ) ) {
+			printf(
+				'<div class="notice notice-error is-dismissible"><p>%s</p></div>',
+				esc_html( $errores[ $error ] )
+			);
+		}
+	}
+
+	/**
+	 * Botón para confirmar el cobro de un medio propio. Solo aparece cuando la
+	 * transición pending -> approved es válida.
+	 *
+	 * @param array $order
+	 */
+	private function render_mark_paid( array $order ): void {
+		$metodo = (string) $order['payment_method'];
+
+		if ( '' === $metodo || ! Methods::is_manual( $metodo ) ) {
+			return;
+		}
+
+		if ( ! OrderStatus::can_transition( (string) $order['status'], OrderStatus::APPROVED ) ) {
+			return;
+		}
+		?>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin: 12px 0;">
+			<?php wp_nonce_field( self::ACTION_MARK_PAID, self::NONCE_MARK_PAID ); ?>
+			<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_MARK_PAID ); ?>" />
+			<input type="hidden" name="order_id" value="<?php echo esc_attr( (string) $order['id'] ); ?>" />
+			<?php submit_button( __( 'Marcar pago recibido', 'simple-form' ), 'primary', 'submit', false ); ?>
+			<span class="description"><?php esc_html_e( 'El cliente pagó por fuera del sitio. Esto confirma el cobro para este pedido.', 'simple-form' ); ?></span>
+		</form>
+		<?php
+	}
+
+	/**
+	 * Marca como pagado un pedido de un medio propio. Capacidad, nonce y una
+	 * transición válida de OrderStatus, en ese orden.
+	 */
+	public function handle_mark_paid(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'No autorizado.', 'simple-form' ) );
+		}
+
+		check_admin_referer( self::ACTION_MARK_PAID, self::NONCE_MARK_PAID );
+
+		$order_id = isset( $_POST['order_id'] ) ? absint( wp_unslash( $_POST['order_id'] ) ) : 0;
+		$order    = $order_id > 0 ? OrderRepository::find( $order_id ) : null;
+
+		if ( null === $order ) {
+			$this->redirect_order( 0, 'not-found' );
+		}
+
+		// Un cobro online no se confirma a mano: lo decide la pasarela.
+		if ( ! Methods::is_manual( (string) $order['payment_method'] ) ) {
+			$this->redirect_order( $order_id, 'not-manual' );
+		}
+
+		if ( ! OrderStatus::can_transition( (string) $order['status'], OrderStatus::APPROVED ) ) {
+			$this->redirect_order( $order_id, 'state' );
+		}
+
+		OrderRepository::update(
+			$order_id,
+			array(
+				'status'  => OrderStatus::APPROVED,
+				'paid_at' => current_time( 'mysql', true ),
+			)
+		);
+
+		$this->redirect_order( $order_id, '', 'paid' );
+	}
+
+	/**
+	 * Vuelve al detalle del pedido (URL fija, nunca el referer).
+	 *
+	 * @param int    $order_id
+	 * @param string $error
+	 * @param string $updated
+	 */
+	private function redirect_order( int $order_id, string $error = '', string $updated = '' ): void {
+		$args = array( 'page' => self::MENU_SLUG );
+
+		if ( $order_id > 0 ) {
+			$args['order'] = $order_id;
+		}
+
+		if ( '' !== $error ) {
+			$args['error'] = $error;
+		}
+
+		if ( '' !== $updated ) {
+			$args['updated'] = $updated;
+		}
+
+		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );
+		exit;
 	}
 
 	/**

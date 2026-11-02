@@ -372,7 +372,11 @@ check(
 	array( 'name', 'email', 'phone', 'object_type', 'object_type_label', 'object_size', 'object_size_label', 'object_material', 'object_material_label', 'description' )
 );
 check( 'step2 tiene las 6 claves', array_keys( $json['data']['progress']['step2'] ), array( 'service_id', 'service_label', 'lat', 'lng', 'radius_km', 'estimated_price' ) );
-check( 'step3 tiene las 2 claves', array_keys( $json['data']['progress']['step3'] ), array( 'payment_method', 'final_price' ) );
+check(
+	'step3 trae el medio, su nombre y el monto',
+	array_keys( $json['data']['progress']['step3'] ),
+	array( 'payment_method', 'payment_method_label', 'final_price' )
+);
 check( 'session_id en la respuesta', $json['data']['session_id'], $session );
 
 list( $status, $json ) = call( $ajax, 'get_progress', array( 'session_id' => 'noexiste' ) );

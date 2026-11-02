@@ -248,7 +248,7 @@ class Shortcode {
 									<?php foreach ( $payment_methods as $method_id ) : ?>
 										<label class="pn-form__radio">
 											<input type="radio" name="payment_method" value="<?php echo esc_attr( $method_id ); ?>" required />
-											<?php echo esc_html( \SimpleForm\Payments\Gateways::label( $method_id ) ); ?>
+											<?php echo esc_html( \SimpleForm\Payments\Methods::label( $method_id ) ); ?>
 										</label>
 									<?php endforeach; ?>
 								<?php endif; ?>
@@ -278,8 +278,15 @@ class Shortcode {
 							<dl class="pn-receipt__list">
 								<div class="pn-receipt__row"><dt><?php esc_html_e( 'Servicio', 'simple-form' ); ?></dt><dd id="pn-receipt-service">—</dd></div>
 								<div class="pn-receipt__row"><dt><?php esc_html_e( 'Radio', 'simple-form' ); ?></dt><dd id="pn-receipt-radius">—</dd></div>
-								<div class="pn-receipt__row pn-receipt__row--total"><dt><?php esc_html_e( 'Total pagado', 'simple-form' ); ?></dt><dd id="pn-receipt-price">$0</dd></div>
+								<div class="pn-receipt__row"><dt><?php esc_html_e( 'Medio de pago', 'simple-form' ); ?></dt><dd id="pn-receipt-method">—</dd></div>
+								<div class="pn-receipt__row pn-receipt__row--total"><dt><?php esc_html_e( 'Total a pagar', 'simple-form' ); ?></dt><dd id="pn-receipt-price">$0</dd></div>
 							</dl>
+
+							<?php // Solo para medios propios: cómo pagar por fuera del sitio. ?>
+							<div class="pn-receipt__note" id="pn-receipt-note" hidden>
+								<h4 class="pn-receipt__subtitle"><?php esc_html_e( 'Cómo pagar', 'simple-form' ); ?></h4>
+								<p id="pn-receipt-note-text"></p>
+							</div>
 
 							<div class="pn-receipt__actions">
 								<button type="button" class="pn-btn pn-btn--ghost" data-action="restart"><?php esc_html_e( 'Hacer otro pedido', 'simple-form' ); ?></button>

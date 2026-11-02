@@ -1,0 +1,88 @@
+/**
+ * Estilos de la pantalla SimpleForm → Medios de pago.
+ *
+ * Solo lo que necesita esta pantalla: las filas de medio, la etiqueta del modo y
+ * el separador entre una fila y la siguiente. WordPress pone el resto.
+ */
+
+.sf-payment {
+	margin: 18px 0;
+	padding: 4px 18px 8px;
+	max-width: 860px;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	background: #fff;
+}
+
+.sf-payment--manual {
+	border-left: 4px solid #dba617;
+}
+
+.sf-payment__head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.sf-payment__head h2 {
+	margin: 10px 0;
+	font-size: 15px;
+	line-height: 1.4;
+}
+
+.sf-payment__badge {
+	display: inline-block;
+	margin-left: 8px;
+	padding: 2px 8px;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+	vertical-align: middle;
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+.sf-payment__badge--production {
+	background: #d1f2d8;
+	color: #146c2e;
+}
+
+.sf-payment__badge--sandbox {
+	background: #fcf0d4;
+	color: #7a4b00;
+}
+
+.sf-payment__badge--manual {
+	background: #e7eefc;
+	color: #1d3a8a;
+}
+
+.sf-payment__remove {
+	color: #b32d2e;
+}
+
+.sf-payment .form-table th {
+	width: 200px;
+	font-weight: 600;
+}
+
+.sf-payments__add {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin: 16px 0;
+}
+
+.sf-payments__add .description {
+	flex-basis: 100%;
+	margin: 0;
+}
+
+.sf-payments__empty {
+	color: #646970;
+	font-style: italic;
+}

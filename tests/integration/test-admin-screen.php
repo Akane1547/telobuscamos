@@ -258,6 +258,8 @@ $html_vacio = ob_get_clean();
 check( 'titula la pantalla', false !== strpos( $html_vacio, 'Medios de pago' ), true );
 check( 'sin medios cargados lo avisa', false !== strpos( $html_vacio, 'No hay ningún medio cargado' ), true );
 check( 'y ofrece el botón de añadir', false !== strpos( $html_vacio, 'data-add-payment' ), true );
+check( 'con la opción de medio propio', false !== strpos( $html_vacio, 'value="__manual__"' ), true );
+check( 'y su plantilla', false !== strpos( $html_vacio, 'id="sf-payment-tpl-__manual__"' ), true );
 check( 'con la plantilla del medio disponible', false !== strpos( $html_vacio, 'id="sf-payment-tpl-mercado_pago"' ), true );
 if ( $modo_bloqueado ) {
 	check( 'la plantilla avisa que el modo lo fija wp-config.php', false !== strpos( $html_vacio, 'Lo fija SIMPLE_FORM_MERCADO_PAGO_MODE' ), true );

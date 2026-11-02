@@ -3,18 +3,21 @@
  *
  * Añadir y quitar medios de pago en la pantalla de administración.
  *
- * El servidor pinta una plantilla por cada medio registrado que todavía no está
- * cargado. "Añadir" clona esa plantilla; "Quitar" saca la fila (y devuelve el
- * medio a la lista de disponibles). No se guarda nada hasta pulsar el botón de
- * guardar, y al guardar la lista de medios activos es exactamente lo que quedó
- * en pantalla.
+ * Hay dos clases de fila:
+ *   - pasarela registrada (Mercado Pago): credenciales por modo. Se ofrece en el
+ *     select mientras no esté cargada y se consume al agregarla.
+ *   - medio propio (transferencia, efectivo): nombre + "cómo pagar". Se pueden
+ *     agregar tantos como se quiera, así que esa opción no se consume.
  *
- * No hay índices que renumerar: cada medio aparece una sola vez y su nombre de
- * campo es el id de la pasarela.
+ * No se guarda nada hasta pulsar el botón de guardar, y al guardar la lista de
+ * medios activos es exactamente lo que quedó en pantalla.
  */
 
 ( function ( window, document ) {
 	'use strict';
+
+	/** Valor del select que crea un medio propio. */
+	const MANUAL = '__manual__';
 
 	const select = document.getElementById( 'sf-add-payment' );
 	const rows = document.getElementById( 'sf-payment-rows' );
@@ -24,12 +27,11 @@
 	}
 
 	const addBtn = document.querySelector( '[data-add-payment]' );
-	const emptyHint = document.querySelector( '[data-add-empty]' );
 	const emptyList = document.querySelector( '[data-payments-empty]' );
 
+	let contador = 0;
+
 	/**
-	 * ¿Quedan medios sin cargar?
-	 *
 	 * @return {boolean}
 	 */
 	function hayDisponibles() {
@@ -41,40 +43,67 @@
 			addBtn.disabled = ! hayDisponibles();
 		}
 
-		if ( emptyHint ) {
-			emptyHint.hidden = hayDisponibles();
-		}
-
 		if ( emptyList ) {
 			emptyList.hidden = rows.querySelector( '[data-payment]' ) !== null;
 		}
 	}
 
 	/**
+	 * El medio propio se puede repetir; una pasarela no.
+	 *
 	 * @param {string} id
 	 * @return {boolean}
 	 */
 	function yaEsta( id ) {
-		return rows.querySelector( '[data-payment="' + id + '"]' ) !== null;
+		return MANUAL !== id && rows.querySelector( '[data-payment="' + id + '"]' ) !== null;
 	}
 
-	function añadir() {
-		const id = select.value;
+	/**
+	 * Crea una fila de medio propio a partir de la plantilla.
+	 */
+	function añadirManual() {
+		const tpl = document.getElementById( 'sf-payment-tpl-' + MANUAL );
 
-		if ( ! id || yaEsta( id ) ) {
+		if ( ! tpl ) {
 			return;
 		}
 
+		// Clave única para los nombres de los campos de esta fila. El servidor
+		// deriva el identificador del nombre, así que la clave es solo del envío.
+		const clave = 'nuevo-' + ( ++contador ) + '-' + String( Date.now() ).slice( -5 );
+		const contenedor = document.createElement( 'div' );
+
+		contenedor.innerHTML = tpl.innerHTML.replace( /__KEY__/g, clave );
+
+		const fila = contenedor.firstElementChild;
+
+		if ( ! fila ) {
+			return;
+		}
+
+		rows.appendChild( fila );
+		actualizarEstado();
+
+		const nombre = fila.querySelector( 'input[type="text"]' );
+
+		if ( nombre ) {
+			nombre.focus();
+		}
+	}
+
+	/**
+	 * @param {string} id
+	 */
+	function añadirPasarela( id ) {
 		const tpl = document.getElementById( 'sf-payment-tpl-' + id );
 
 		if ( ! tpl ) {
 			return;
 		}
 
-		const nodo = tpl.content.cloneNode( true );
-		rows.appendChild( nodo );
+		rows.appendChild( tpl.content.cloneNode( true ) );
 
-		// El medio deja de estar disponible mientras esté cargado.
+		// Una pasarela se agrega una sola vez: sale de la lista mientras esté.
 		const opcion = select.querySelector( 'option[value="' + id + '"]' );
 
 		if ( opcion ) {
@@ -84,18 +113,30 @@
 		actualizarEstado();
 
 		const nueva = rows.querySelector( '[data-payment="' + id + '"]' );
+		const primero = nueva ? nueva.querySelector( 'input[type="password"]' ) : null;
 
-		if ( nueva ) {
-			const primero = nueva.querySelector( 'input[type="password"]' );
-
-			if ( primero ) {
-				primero.focus();
-			}
+		if ( primero ) {
+			primero.focus();
 		}
 	}
 
+	function añadir() {
+		const id = select.value;
+
+		if ( ! id || yaEsta( id ) ) {
+			return;
+		}
+
+		if ( MANUAL === id ) {
+			añadirManual();
+			return;
+		}
+
+		añadirPasarela( id );
+	}
+
 	/**
-	 * Devuelve un medio a la lista de disponibles.
+	 * Devuelve una pasarela a la lista de disponibles.
 	 *
 	 * @param {string} id
 	 * @param {string} label
@@ -119,7 +160,21 @@
 			return;
 		}
 
-		devolverOpcion( fila.dataset.payment, fila.querySelector( 'h2' ) ? fila.querySelector( 'h2' ).firstChild.textContent.trim() : fila.dataset.payment );
+		const esManual = '1' === fila.dataset.manual;
+
+		// Quitar un medio propio lo borra al guardar (a diferencia de las
+		// credenciales de una pasarela, que quedan guardadas): se pregunta.
+		if ( esManual && ! window.confirm( '¿Quitar este medio de pago? Se borra al guardar.' ) ) {
+			return;
+		}
+
+		if ( ! esManual ) {
+			const titulo = fila.querySelector( 'h2' );
+			const label = titulo && titulo.firstChild ? titulo.firstChild.textContent.trim() : fila.dataset.payment;
+
+			devolverOpcion( fila.dataset.payment, label );
+		}
+
 		fila.remove();
 		actualizarEstado();
 	}

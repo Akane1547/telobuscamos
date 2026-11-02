@@ -22,6 +22,7 @@ namespace SimpleForm\Admin;
 
 use SimpleForm\Core\Assets;
 use SimpleForm\Payments\Gateways;
+use SimpleForm\Payments\Methods;
 use SimpleForm\Payments\PaymentConfig;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -73,6 +74,13 @@ class AdminPayments {
 			return;
 		}
 
+		wp_enqueue_style(
+			'simple-form-admin-payments',
+			SIMPLE_FORM_URL . 'assets/css/admin-payments.css',
+			array(),
+			Assets::asset_version( 'assets/css/admin-payments.css', SIMPLE_FORM_VERSION )
+		);
+
 		wp_enqueue_script(
 			self::HANDLE_ADMIN_JS,
 			SIMPLE_FORM_URL . 'assets/js/admin-payments.js',
@@ -88,7 +96,19 @@ class AdminPayments {
 		}
 
 		$enabled   = PaymentConfig::enabled_ids();
-		$available = array_values( array_diff( Gateways::ids(), $enabled ) );
+
+		// Una pasarela registrada se puede agregar si no está; un medio propio se
+		// puede agregar siempre (el admin le pone el nombre).
+		$available = array_values(
+			array_filter(
+				Gateways::ids(),
+				static function ( $id ) use ( $enabled ) {
+					return ! in_array( $id, $enabled, true );
+				}
+			)
+		);
+
+		$propias = array_values( array_filter( Methods::custom(), static fn( $m ) => in_array( $m['id'], $enabled, true ) ) );
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Medios de pago', 'simple-form' ); ?></h1>
@@ -100,25 +120,34 @@ class AdminPayments {
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<?php wp_nonce_field( self::ACTION_SAVE, self::NONCE_SAVE ); ?>
 				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_SAVE ); ?>" />
+				<?php // Marca que el envío viene de esta pantalla: sin esto no se tocan los medios propios. ?>
+				<input type="hidden" name="sf_payments_form" value="1" />
 
 				<p class="sf-payments__add">
 					<label for="sf-add-payment"><strong><?php esc_html_e( 'Añadir medio de pago', 'simple-form' ); ?></strong></label>
 					<select id="sf-add-payment">
+						<option value="__manual__"><?php esc_html_e( '— Medio propio (transferencia, efectivo…) —', 'simple-form' ); ?></option>
 						<?php foreach ( $available as $id ) : ?>
 							<option value="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( Gateways::label( $id ) ); ?></option>
 						<?php endforeach; ?>
 					</select>
-					<button type="button" class="button" data-add-payment <?php disabled( empty( $available ) ); ?>>
+					<button type="button" class="button" data-add-payment>
 						<?php esc_html_e( 'Añadir', 'simple-form' ); ?>
 					</button>
-					<span class="description" data-add-empty <?php echo empty( $available ) ? '' : 'hidden'; ?>>
-						<?php esc_html_e( 'No hay más medios disponibles en este plugin.', 'simple-form' ); ?>
+					<span class="description">
+						<?php esc_html_e( 'Un medio propio lo cobras tú: el cliente paga por fuera y tú confirmas el pago en Pedidos.', 'simple-form' ); ?>
 					</span>
 				</p>
 
 				<div id="sf-payment-rows">
 					<?php foreach ( $enabled as $id ) : ?>
-						<?php $this->render_method( $id, false ); ?>
+						<?php if ( Methods::is_gateway( $id ) ) : ?>
+							<?php $this->render_method( $id, false ); ?>
+						<?php endif; ?>
+					<?php endforeach; ?>
+
+					<?php foreach ( $propias as $metodo ) : ?>
+						<?php $this->render_custom_method( $metodo, '' ); ?>
 					<?php endforeach; ?>
 
 					<?php if ( empty( $enabled ) ) : ?>
@@ -136,6 +165,10 @@ class AdminPayments {
 					<?php $this->render_method( $id, true ); ?>
 				</template>
 			<?php endforeach; ?>
+
+			<template id="sf-payment-tpl-__manual__">
+				<?php $this->render_custom_method( array( 'id' => '', 'label' => '', 'note' => '' ), '__KEY__' ); ?>
+			</template>
 
 			<?php $this->render_checks(); ?>
 		</div>
@@ -407,6 +440,62 @@ class AdminPayments {
 	}
 
 	/**
+	 * Fila de un medio propio: nombre y "cómo pagar". No cobra online, así que
+	 * no pide credenciales ni modo.
+	 *
+	 * La misma función pinta la fila guardada y la plantilla de "Añadir"; en la
+	 * plantilla la clave de los campos es un marcador que el JS reemplaza.
+	 *
+	 * @param array  $method id, label y note.
+	 * @param string $key    Clave para los nombres de los campos.
+	 */
+	private function render_custom_method( array $method, string $key ): void {
+		$id    = (string) ( $method['id'] ?? '' );
+		$label = (string) ( $method['label'] ?? '' );
+		$note  = (string) ( $method['note'] ?? '' );
+
+		$clave = '' !== $key ? $key : $id;
+		$nombre = 'custom[' . $clave . ']';
+		?>
+		<div class="sf-payment sf-payment--manual" data-payment="<?php echo esc_attr( '' !== $id ? $id : $clave ); ?>" data-manual="1">
+			<div class="sf-payment__head">
+				<h2>
+					<?php echo esc_html( '' !== $label ? $label : __( 'Medio propio', 'simple-form' ) ); ?>
+					<span class="sf-payment__badge sf-payment__badge--manual"><?php esc_html_e( 'Cobro manual', 'simple-form' ); ?></span>
+				</h2>
+				<button type="button" class="button-link sf-payment__remove" data-remove-payment>
+					<?php esc_html_e( 'Quitar', 'simple-form' ); ?>
+				</button>
+			</div>
+
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row">
+						<label for="sf-manual-label-<?php echo esc_attr( $clave ); ?>"><?php esc_html_e( 'Nombre del medio', 'simple-form' ); ?></label>
+					</th>
+					<td>
+						<input type="hidden" name="<?php echo esc_attr( $nombre ); ?>[id]" value="<?php echo esc_attr( $id ); ?>" />
+						<input type="text" class="regular-text" id="sf-manual-label-<?php echo esc_attr( $clave ); ?>"
+							name="<?php echo esc_attr( $nombre ); ?>[label]" value="<?php echo esc_attr( $label ); ?>"
+							placeholder="<?php esc_attr_e( 'Transferencia bancaria', 'simple-form' ); ?>" required />
+						<p class="description"><?php esc_html_e( 'Es el nombre que ve el cliente en el Paso 3. Una vez guardado, el medio mantiene su identificador aunque cambies el nombre.', 'simple-form' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="sf-manual-note-<?php echo esc_attr( $clave ); ?>"><?php esc_html_e( 'Cómo pagar', 'simple-form' ); ?></label>
+					</th>
+					<td>
+						<textarea id="sf-manual-note-<?php echo esc_attr( $clave ); ?>" name="<?php echo esc_attr( $nombre ); ?>[note]" rows="4" class="large-text" placeholder="<?php esc_attr_e( 'Banco, tipo de cuenta, número, RUT y a nombre de quién. Esto lo ve el cliente en el recibo.', 'simple-form' ); ?>"><?php echo esc_textarea( $note ); ?></textarea>
+						<p class="description"><?php esc_html_e( 'El pedido queda pendiente; tú lo confirmas con "Marcar pago recibido" en Pedidos.', 'simple-form' ); ?></p>
+					</td>
+				</tr>
+			</table>
+		</div>
+		<?php
+	}
+
+	/**
 	 * Comprobaciones que §16 pide antes de dar la integración por buena.
 	 */
 	private function render_checks(): void {
@@ -551,7 +640,32 @@ class AdminPayments {
 			$ids[] = $id;
 		}
 
-		PaymentConfig::save_enabled_ids( $ids );
+		// Medios propios: la pantalla los manda todos juntos. Solo se tocan cuando
+		// el envío viene de este formulario (si no, un POST ajeno los borraría).
+		$custom_ids = array();
+
+		if ( isset( $_POST['sf_payments_form'] ) ) {
+			$custom_raw = isset( $_POST['custom'] ) && is_array( $_POST['custom'] ) ? wp_unslash( $_POST['custom'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- se sanea en Methods::normalize().
+
+			$filas = array();
+
+			foreach ( $custom_raw as $fila ) {
+				if ( ! is_array( $fila ) ) {
+					continue;
+				}
+
+				$filas[] = array(
+					'id'    => isset( $fila['id'] ) && is_string( $fila['id'] ) ? $fila['id'] : '',
+					'label' => isset( $fila['label'] ) && is_string( $fila['label'] ) ? $fila['label'] : '',
+					'note'  => isset( $fila['note'] ) && is_string( $fila['note'] ) ? $fila['note'] : '',
+				);
+			}
+
+			$guardadas  = Methods::save_custom( $filas );
+			$custom_ids = array_column( $guardadas, 'id' );
+		}
+
+		PaymentConfig::save_enabled_ids( array_merge( $ids, $custom_ids ) );
 
 		$this->redirect( '' === $error ? 'payments' : '', $error, $warning );
 	}

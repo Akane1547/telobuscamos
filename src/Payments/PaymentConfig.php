@@ -233,6 +233,8 @@ final class PaymentConfig {
 	 *                se activa sin HTTPS).
 	 */
 	public static function save( string $gateway_id, string $mode, array $plain_fields = array() ): string {
+		// Un medio propio no tiene credenciales ni modo: su "cómo pagar" vive en
+		// Methods y no se cifra porque lo lee el cliente.
 		if ( ! Gateways::has( $gateway_id ) ) {
 			return 'unknown';
 		}
@@ -412,7 +414,8 @@ final class PaymentConfig {
 
 			$id = sanitize_key( $id );
 
-			if ( '' === $id || isset( $seen[ $id ] ) || ! Gateways::has( $id ) ) {
+			// Vale una pasarela registrada o un medio propio del admin.
+			if ( '' === $id || isset( $seen[ $id ] ) || ! Methods::has( $id ) ) {
 				continue;
 			}
 

@@ -113,7 +113,7 @@
 			const totalSteps = wrapper.querySelectorAll( SF.selectors.stepPanel ).length;
 			SF.state.currentStep = Math.min( totalSteps, currentStep + 1 );
 
-			if ( currentStep === 2 ) {
+			if ( currentStep === 2 && result.progress.step2 ) {
 				UI.updateSummary( wrapper, result.progress.step2 );
 			}
 

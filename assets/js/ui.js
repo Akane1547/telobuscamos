@@ -216,6 +216,9 @@
 		 * @param {Object} step2 { service_label, radius, estimated_price }
 		 */
 		updateSummary( wrapper, step2 = {} ) {
+			// Un paso 2 sin datos no puede romper el avance del formulario.
+			step2 = step2 || {};
+
 			const map = {
 				'#pn-summary-service': step2.service_label,
 				'#pn-summary-radius': step2.radius_km ? window.SimpleForm.formatRadius( step2.radius_km ) : null,

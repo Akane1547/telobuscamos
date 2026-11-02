@@ -37,6 +37,7 @@
 				'#pn-receipt-service': step2.service_label,
 				'#pn-receipt-radius': step2.radius_km ? window.SimpleForm.formatRadius( step2.radius_km ) : null,
 				'#pn-receipt-price': price != null ? `$${ Math.round( price ).toLocaleString( 'es-CL' ) }` : null,
+				'#pn-receipt-method': step3.payment_method_label,
 			};
 
 			Object.keys( fields ).forEach( ( sel ) => {
@@ -45,6 +46,17 @@
 					el.textContent = fields[ sel ] || '—';
 				}
 			} );
+
+			// Un medio propio (transferencia, efectivo) no cobra online: el
+			// cliente ve acá las instrucciones del administrador para pagar.
+			const nota = wrapper.querySelector( '#pn-receipt-note' );
+			const notaTexto = wrapper.querySelector( '#pn-receipt-note-text' );
+			const instrucciones = step3.manual_instructions || '';
+
+			if ( nota && notaTexto ) {
+				nota.hidden = '' === instrucciones;
+				notaTexto.textContent = instrucciones;
+			}
 
 			// La fecha la formatea el servidor; el navegador no la inventa.
 			const dateEl = wrapper.querySelector( '#pn-receipt-date' );

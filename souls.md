@@ -2519,3 +2519,84 @@ No.
 ```
 
 La identidad siempre debe ser determinada por el servidor mediante la sesión autenticada de WordPress.
+
+---
+
+## 52. Medios de pago (implementado)
+
+### 52.1 Qué es un medio de pago
+
+```text
+pasarela registrada en el código   (hoy: mercado_pago)
++  medios propios del administrador (transferencia, efectivo, …)
+=  medios de pago que ofrece el Paso 3
+```
+
+Las pasarelas se declaran en `Payments\Gateways::REGISTRY` (nombre, clase, campos
+de credenciales). Los medios propios los crea el administrador desde
+**SimpleForm → Medios de pago**: nombre + “cómo pagar”. Su identificador sale del
+nombre la primera vez y **no cambia** si después se edita el nombre, porque es lo
+que queda guardado en los pedidos.
+
+### 52.2 Un medio propio no cobra online
+
+No tiene pasarela detrás, así que:
+
+```text
+cliente elige el medio
+        ↓
+el pedido queda en `pending` (current_step 4)
+        ↓
+el recibo muestra el medio y su “cómo pagar”
+        ↓
+el administrador confirma en Pedidos → “Marcar pago recibido”
+        ↓
+pending → approved  (OrderStatus::can_transition)
+```
+
+Reglas:
+
+- `save_step3` **no** crea pago ni redirección para un medio propio: responde
+  `manual: true` con las instrucciones y el pedido ya guardado.
+- El botón del admin solo aparece si `Methods::is_manual( $order['payment_method'] )`
+  y la transición `pending → approved` es válida. Un cobro online **no** se
+  confirma a mano: su estado lo decide la pasarela.
+- El “cómo pagar” se guarda sin cifrar: está pensado para que lo lea el cliente
+  (datos de la cuenta, no secretos).
+
+### 52.3 Credenciales por modo
+
+```text
+simple_form_payment_credentials = array(
+    'mercado_pago' => array(
+        'mode'       => 'sandbox' | 'production',   // lo que eligió el admin
+        'sandbox'    => array( campo => criptograma ),
+        'production' => array( campo => criptograma ),
+    ),
+);
+```
+
+- Guardar en un modo **no toca** el juego del otro: se puede alternar sin volver
+  a escribir las claves.
+- `mode()` es el modo efectivo (producción solo con HTTPS); `desired_mode()` es
+  lo que eligió el admin; `mode_is_locked()` avisa si lo fija `wp-config.php`.
+- Guardar en producción sin HTTPS **guarda** las claves y avisa que no se
+  activa. Descartar lo escrito hacía perder las claves.
+- Las constantes de `wp-config.php` mandan sobre el panel cuando están
+  definidas, y el campo correspondiente sale bloqueado.
+
+### 52.4 Lo que el servidor no acepta
+
+```text
+[ ] Un id que no sea pasarela registrada ni medio propio  → 422
+[ ] Un id que exista pero no esté habilitado              → 422
+[ ] Un medio propio que duplique una pasarela (por id o por nombre visible) → descartado
+[ ] Más de 20 medios propios                              → se ignoran los sobrantes
+[ ] Confirmar a mano un cobro online                      → error, sin cambios
+[ ] Un nonce vencido o de otra acción                     → wp_die
+```
+
+La lista de medios habilitados es exactamente lo que quedó en la pantalla al
+guardar: quitar una fila da de baja el medio. Quitar un medio propio lo borra;
+quitar una pasarela **conserva** sus credenciales para cuando se vuelva a
+agregar.
