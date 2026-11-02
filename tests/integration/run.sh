@@ -72,6 +72,38 @@ ok=0
 saltadas=0
 fallidas=0
 
+# --- estado del sitio --------------------------------------------------------
+#
+# Las suites guardan y restauran lo que tocan, pero eso solo sirve si el punto de
+# partida estaba limpio. Acá se toma una foto antes de la primera suite y se
+# restaura al final (también si algo falla a mitad de camino), así correr la
+# suite no deja el plan de prueba, el radio de fábrica ni pedidos huérfanos.
+
+ESTADO="$DIR/.site-state.json"
+
+correr_php() {
+	LD_LIBRARY_PATH="$LIB" "$PHP" \
+		-d mysqli.default_socket="$SOCKET" \
+		-d pdo_mysql.default_socket="$SOCKET" \
+		"$@"
+}
+
+correr_php "$DIR/_site-state.php" save "$ESTADO" || {
+	echo "no pude guardar el estado del sitio; no corro las suites" >&2
+	exit 1
+}
+
+restaurar_estado() {
+	[ -f "$ESTADO" ] || return
+
+	correr_php "$DIR/_site-state.php" restore "$ESTADO"
+	rm -f "$ESTADO"
+}
+
+trap restaurar_estado EXIT
+
+echo
+
 for suite in "$DIR"/test-*.php; do
 	[ -f "$suite" ] || continue
 
@@ -100,6 +132,9 @@ for suite in "$DIR"/test-*.php; do
 
 	echo
 done
+
+restaurar_estado
+trap - EXIT
 
 echo "=============================================="
 
