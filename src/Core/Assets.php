@@ -94,6 +94,7 @@ class Assets {
                 'nonce'   => wp_create_nonce( 'simple_form_nonce' ),
                 'actions' => array(
                     'getProgress'     => 'simple_form_get_progress',
+                    'syncPayment'     => 'simple_form_sync_payment',
                     'getCatalogs'     => 'simple_form_get_catalogs',
                     'saveStep1'       => 'simple_form_save_step1',
                     'saveStep2'       => 'simple_form_save_step2',

@@ -4,7 +4,7 @@ Tags: formulario, pago, mercadopago, servicios, mapa
 Requires at least: 6.0
 Requires PHP: 7.4
 Tested up to: 6.7
-Stable tag: 1.6.0
+Stable tag: 1.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,12 @@ No. Cada pedido guarda un snapshot de la etiqueta, el precio base y el precio po
 Porque todavía no se configuró ninguno en *Pedidos → Pagos*. Hasta que no haya un medio habilitado, el formulario no ofrece ninguno.
 
 == Changelog ==
+
+= 1.7.0 =
+* **PayPal como pasarela real**: se agrega desde *Medios de pago* con un botón, se cargan Client ID, Client Secret y la tasa CLP→USD, y quedan guardadas en las opciones del sitio (cifradas y por modo, pruebas/comercial).
+* **PayPal no acepta pesos chilenos**: el monto del pedido se convierte a USD con la tasa que fija el administrador. Sin tasa válida no se crea el pago (no se inventa un tipo de cambio).
+* Al volver del comprador, el servidor consulta la orden y **captura** el pago; el pedido pasa a confirmado. Sin claves válidas el formulario avisa con un mensaje genérico y no filtra nada.
+* El alta de "medio propio" (cobro manual) sale del selector: ahora se agregan pasarelas. Los medios propios que ya existan siguen funcionando.
 
 = 1.6.0 =
 * **Medios de pago propios**: además de las pasarelas del plugin, el administrador puede agregar medios con un nombre (transferencia bancaria, efectivo, lo que sea) y un "cómo pagar". Se suman a la lista y el cliente los ve en el Paso 3.

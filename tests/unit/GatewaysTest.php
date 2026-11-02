@@ -13,7 +13,7 @@ use SimpleForm\Payments\Gateways;
 final class GatewaysTest extends TestCase {
 
 	public function test_lista_las_pasarelas_registradas(): void {
-		$this->assertSame( array( 'mercado_pago' ), Gateways::ids() );
+		$this->assertSame( array( 'mercado_pago', 'paypal' ), Gateways::ids() );
 	}
 
 	public function test_reconoce_una_registrada(): void {
@@ -21,23 +21,26 @@ final class GatewaysTest extends TestCase {
 	}
 
 	public function test_no_reconoce_una_desconocida(): void {
-		$this->assertFalse( Gateways::has( 'paypal' ) );
+		$this->assertFalse( Gateways::has( 'transferencia' ) );
 		$this->assertFalse( Gateways::has( '' ) );
 	}
 
 	public function test_etiqueta_visible(): void {
 		$this->assertSame( 'Mercado Pago', Gateways::label( 'mercado_pago' ) );
-		$this->assertSame( '', Gateways::label( 'paypal' ) );
+		$this->assertSame( 'PayPal', Gateways::label( 'paypal' ) );
+		$this->assertSame( '', Gateways::label( 'transferencia' ) );
 	}
 
 	public function test_clase_de_la_pasarela(): void {
 		$this->assertSame( 'SimpleForm\Payments\MercadoPagoGateway', Gateways::gateway_class( 'mercado_pago' ) );
-		$this->assertSame( '', Gateways::gateway_class( 'paypal' ) );
+		$this->assertSame( 'SimpleForm\Payments\PayPalGateway', Gateways::gateway_class( 'paypal' ) );
+		$this->assertSame( '', Gateways::gateway_class( 'transferencia' ) );
 	}
 
 	public function test_campos_de_credenciales(): void {
 		$this->assertSame( array( 'access_token', 'webhook_secret' ), Gateways::credential_fields( 'mercado_pago' ) );
-		$this->assertSame( array(), Gateways::credential_fields( 'paypal' ) );
+		$this->assertSame( array( 'client_id', 'client_secret', 'usd_rate' ), Gateways::credential_fields( 'paypal' ) );
+		$this->assertSame( array(), Gateways::credential_fields( 'transferencia' ) );
 	}
 
 	/**

@@ -54,9 +54,10 @@ final class PaymentConfigTest extends TestCase {
 	}
 
 	public function test_la_lista_de_medios_se_sanea_contra_el_registro(): void {
-		PaymentConfig::save_enabled_ids( array( 'mercado_pago', 'MERCADO_PAGO', 'paypal', '', 42, array() ) );
+		PaymentConfig::save_enabled_ids( array( 'mercado_pago', 'MERCADO_PAGO', 'paypal', 'stripe', '', 42, array() ) );
 
-		$this->assertSame( array( 'mercado_pago' ), PaymentConfig::enabled_ids() );
+		// 'paypal' es una pasarela registrada; 'stripe' no existe.
+		$this->assertSame( array( 'mercado_pago', 'paypal' ), PaymentConfig::enabled_ids() );
 	}
 
 	public function test_un_option_corrupto_no_rompe(): void {
@@ -66,7 +67,7 @@ final class PaymentConfigTest extends TestCase {
 	}
 
 	public function test_una_lista_sin_medios_registrados_queda_vacia(): void {
-		PaymentConfig::save_enabled_ids( array( 'paypal' ) );
+		PaymentConfig::save_enabled_ids( array( 'stripe' ) );
 
 		$this->assertSame( array(), PaymentConfig::enabled_ids() );
 	}
@@ -97,8 +98,8 @@ final class PaymentConfigTest extends TestCase {
 	}
 
 	public function test_una_pasarela_no_registrada_no_se_guarda(): void {
-		$this->assertSame( 'unknown', PaymentConfig::save( 'paypal', 'sandbox', self::CAMPOS ) );
-		$this->assertSame( '', PaymentConfig::credential( 'paypal', 'webhook_secret' ) );
+		$this->assertSame( 'unknown', PaymentConfig::save( 'stripe', 'sandbox', self::CAMPOS ) );
+		$this->assertSame( '', PaymentConfig::credential( 'stripe', 'webhook_secret' ) );
 	}
 
 	public function test_la_credencial_guardada_se_lee_de_vuelta(): void {

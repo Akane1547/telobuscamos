@@ -126,7 +126,6 @@ class AdminPayments {
 				<p class="sf-payments__add">
 					<label for="sf-add-payment"><strong><?php esc_html_e( 'Añadir medio de pago', 'simple-form' ); ?></strong></label>
 					<select id="sf-add-payment">
-						<option value="__manual__"><?php esc_html_e( '— Medio propio (transferencia, efectivo…) —', 'simple-form' ); ?></option>
 						<?php foreach ( $available as $id ) : ?>
 							<option value="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( Gateways::label( $id ) ); ?></option>
 						<?php endforeach; ?>
@@ -135,7 +134,7 @@ class AdminPayments {
 						<?php esc_html_e( 'Añadir', 'simple-form' ); ?>
 					</button>
 					<span class="description">
-						<?php esc_html_e( 'Un medio propio lo cobras tú: el cliente paga por fuera y tú confirmas el pago en Pedidos.', 'simple-form' ); ?>
+						<?php esc_html_e( 'Al agregar una pasarela se cargan sus credenciales, que quedan guardadas en este sitio (cifradas) por modo de pruebas y comercial.', 'simple-form' ); ?>
 					</span>
 				</p>
 
@@ -166,9 +165,7 @@ class AdminPayments {
 				</template>
 			<?php endforeach; ?>
 
-			<template id="sf-payment-tpl-__manual__">
-				<?php $this->render_custom_method( array( 'id' => '', 'label' => '', 'note' => '' ), '__KEY__' ); ?>
-			</template>
+			<?php // Los medios propios que ya estén cargados se siguen pidiendo y guardando. ?>
 
 			<?php $this->render_checks(); ?>
 		</div>
@@ -207,6 +204,7 @@ class AdminPayments {
 		$errores = array(
 			'crypto'  => __( 'No se guardó: este PHP no puede cifrar (falta libsodium) o wp-config.php no tiene salts.', 'simple-form' ),
 			'unknown' => __( 'No se guardó: esa pasarela no está registrada.', 'simple-form' ),
+			'rate'    => __( 'No se guardó PayPal: la tasa de cambio tiene que ser un número mayor que cero (CLP por USD).', 'simple-form' ),
 		);
 
 		if ( '' !== $error && isset( $errores[ $error ] ) ) {
@@ -296,6 +294,17 @@ class AdminPayments {
 						<td><?php $this->render_credential_field( $id, $field ); ?></td>
 					</tr>
 				<?php endforeach; ?>
+
+				<?php if ( 'paypal' === $id ) : ?>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Moneda', 'simple-form' ); ?></th>
+						<td>
+							<p class="description">
+								<?php esc_html_e( 'PayPal no acepta pesos chilenos: el monto del pedido (CLP) se convierte a USD con la tasa de arriba. Sin tasa válida no se crea el pago.', 'simple-form' ); ?>
+							</p>
+						</td>
+					</tr>
+				<?php endif; ?>
 
 				<tr>
 					<th scope="row"><?php esc_html_e( 'Claves guardadas', 'simple-form' ); ?></th>
@@ -540,6 +549,9 @@ class AdminPayments {
 		$labels = array(
 			'access_token'   => __( 'Access Token', 'simple-form' ),
 			'webhook_secret' => __( 'Clave secreta del webhook', 'simple-form' ),
+			'client_id'      => __( 'Client ID', 'simple-form' ),
+			'client_secret'  => __( 'Client Secret', 'simple-form' ),
+			'usd_rate'       => __( 'Tasa de cambio (CLP por USD)', 'simple-form' ),
 		);
 
 		return $labels[ $field ] ?? $field;
@@ -620,6 +632,16 @@ class AdminPayments {
 				}
 
 				$campos[ $field ] = $valor;
+			}
+
+			// La tasa de PayPal convierte CLP a USD: sin un número positivo no hay
+			// cobro posible, así que no se guarda una tasa inválida.
+			if ( 'paypal' === $id && isset( $campos['usd_rate'] ) && ! ( is_numeric( $campos['usd_rate'] ) && (float) $campos['usd_rate'] > 0 ) ) {
+				if ( '' === $error ) {
+					$error = 'rate';
+				}
+
+				continue;
 			}
 
 			$resultado = PaymentConfig::save( $id, $mode, $campos );

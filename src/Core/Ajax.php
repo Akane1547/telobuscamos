@@ -14,6 +14,7 @@ use SimpleForm\Payments\Gateways;
 use SimpleForm\Payments\Methods;
 use SimpleForm\Payments\OrderStatus;
 use SimpleForm\Payments\PaymentConfig;
+use SimpleForm\Payments\PaymentProcessor;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -52,6 +53,10 @@ class Ajax {
 	public function __construct() {
 		add_action( 'wp_ajax_simple_form_get_progress', array( $this, 'get_progress' ) );
 		add_action( 'wp_ajax_nopriv_simple_form_get_progress', array( $this, 'get_progress' ) );
+
+		// Al volver de una pasarela: pregunta el estado real y, en PayPal, captura.
+		add_action( 'wp_ajax_simple_form_sync_payment', array( $this, 'sync_payment' ) );
+		add_action( 'wp_ajax_nopriv_simple_form_sync_payment', array( $this, 'sync_payment' ) );
 
 		add_action( 'wp_ajax_simple_form_save_step1', array( $this, 'save_step1' ) );
 		add_action( 'wp_ajax_nopriv_simple_form_save_step1', array( $this, 'save_step1' ) );
@@ -133,6 +138,50 @@ class Ajax {
 		}
 
 		return array( $lat, $lng );
+	}
+
+	/**
+	 * Sincroniza el pago de la sesión actual con la pasarela.
+	 *
+	 * El retorno del comprador no confirma nada: esto le pregunta a la pasarela
+	 * por el estado real del pago y, si corresponde, deja el pedido actualizado.
+	 * En PayPal además captura la orden aprobada (su flujo es CAPTURE y no hay
+	 * webhook configurado).
+	 *
+	 * Nunca acepta un id de pago del navegador: el id externo sale del pedido que
+	 * corresponde a la sesión.
+	 */
+	public function sync_payment(): void {
+		$this->verify_request_nonce();
+		$this->guard_rate_limit( 'sync_payment', self::LIMIT_READS );
+
+		$session_id = $this->read_session_id();
+		$order      = $this->find_order_by_session( $session_id );
+
+		if ( null === $order ) {
+			wp_send_json_error( array( 'message' => __( 'Sesión no encontrada o expirada.', 'simple-form' ) ), 410 );
+		}
+
+		$metodo   = (string) $order['payment_method'];
+		$externo  = (string) $order['external_payment_id'];
+		$clase    = Gateways::gateway_class( $metodo );
+		$pendiente = OrderStatus::is_awaiting( (string) $order['status'] );
+
+		if ( '' !== $clase && class_exists( $clase ) && '' !== $externo && $pendiente ) {
+			$gateway = new $clase();
+
+			if ( $gateway instanceof Gateway ) {
+				PaymentProcessor::apply( $order, $gateway, $externo );
+
+				$releido = $this->find_order_by_session( $session_id );
+
+				if ( null !== $releido ) {
+					$order = $releido;
+				}
+			}
+		}
+
+		wp_send_json_success( array( 'progress' => OrderRepository::to_progress( $order ) ) );
 	}
 
 	/**

@@ -232,6 +232,20 @@
 			return;
 		}
 
+		// Primero se le pregunta a la pasarela: el retorno del comprador no
+		// confirma nada. En PayPal acá se captura la orden aprobada.
+		if ( SF.actions.syncPayment ) {
+			try {
+				const sincronizado = await SF.request( SF.actions.syncPayment );
+
+				if ( sincronizado && sincronizado.progress ) {
+					SF.state.progress = sincronizado.progress;
+				}
+			} catch ( error ) {
+				// Si no se pudo, el bucle de abajo sigue preguntando el estado.
+			}
+		}
+
 		const textos = SF.i18n || {};
 		const esperas = [ 0, 1500, 3000, 5000 ];
 

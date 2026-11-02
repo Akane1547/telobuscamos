@@ -31,6 +31,13 @@ final class Gateways {
 			'class'       => 'SimpleForm\Payments\MercadoPagoGateway',
 			'credentials' => array( 'access_token', 'webhook_secret' ),
 		),
+		'paypal'       => array(
+			'label'       => 'PayPal',
+			'class'       => 'SimpleForm\Payments\PayPalGateway',
+			// PayPal no admite CLP: `usd_rate` es la tasa (CLP por USD) con la
+			// que se convierte el monto del pedido. Sin ella no se cobra.
+			'credentials' => array( 'client_id', 'client_secret', 'usd_rate' ),
+		),
 	);
 
 	/**

@@ -2600,3 +2600,29 @@ La lista de medios habilitados es exactamente lo que quedó en la pantalla al
 guardar: quitar una fila da de baja el medio. Quitar un medio propio lo borra;
 quitar una pasarela **conserva** sus credenciales para cuando se vuelva a
 agregar.
+
+### 52.5 PayPal (Orders v2)
+
+```text
+crear orden (intent CAPTURE)  →  redirige al enlace approve
+        ↓
+el comprador paga en PayPal y vuelve (simple_form_return)
+        ↓
+el servidor consulta la orden → si está APPROVED, la captura
+        ↓
+COMPLETED → pedido aprobado (PaymentProcessor, con custom_id = id del pedido)
+```
+
+- Credenciales: `client_id`, `client_secret` y `usd_rate` (CLP por USD), guardadas
+  cifradas por modo. Los hosts son `api-m.sandbox.paypal.com` y `api-m.paypal.com`.
+- **PayPal no admite CLP** (su lista de monedas de la API no incluye el peso
+  chileno): el monto se convierte a USD con la tasa del administrador. Sin tasa
+  válida `create_payment()` devuelve vacío y el formulario avisa; no se inventa un
+  tipo de cambio.
+- La captura ocurre en `fetch_payment()` cuando la orden está `APPROVED`, porque
+  PayPal no tiene webhook configurado en el plugin todavía. El retorno del
+  comprador es el que dispara esa consulta (`simple_form_sync_payment`).
+- `sync_payment` no acepta ids externos del navegador: los saca del pedido de la
+  sesión, igual que el resto de endpoints.
+- Pendiente para producción: registrar el webhook de PayPal con verificación de
+  firma, para confirmar pagos aunque el comprador cierre la pestaña al volver.
