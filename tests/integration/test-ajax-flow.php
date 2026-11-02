@@ -102,6 +102,11 @@ $table  = \SimpleForm\Database\Database::table_name( \SimpleForm\Database\Databa
 $max_id = (int) $wpdb->get_var( "SELECT MAX(id) FROM `{$table}`" );
 
 $services_before = get_option( 'simple_form_services', null );
+
+// El rango del radio lo fija el administrador y puede estar en cualquier valor:
+// la suite usa el de fábrica (100 m a 1 km) para no depender de lo guardado.
+$radius_before = get_option( 'simple_form_radius', null );
+update_option( 'simple_form_radius', array( 'min_m' => 100, 'max_m' => 1000, 'step_m' => 100 ) );
 // La opción guarda enteros: AdminServices los escribe con absint + round, y el
 // servidor no vuelve a hacer aritmética de dinero en punto flotante (B-10).
 update_option(
@@ -517,9 +522,16 @@ if ( null === $services_before ) {
 	update_option( 'simple_form_services', $services_before );
 }
 
+if ( null === $radius_before ) {
+	delete_option( 'simple_form_radius' );
+} else {
+	update_option( 'simple_form_radius', $radius_before );
+}
+
 check( 'pedidos de prueba borrados', (int) $deleted, 1 );
 check( 'sin filas de prueba restantes', (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$table}` WHERE id > {$max_id}" ), 0 );
 check( 'opción de servicios restaurada', get_option( 'simple_form_services', null ), $services_before );
+check( 'rango del radio restaurado', get_option( 'simple_form_radius', null ), $radius_before );
 
 printf( "\n%s\n", 0 === $failures ? 'TODO OK' : "FALLAS: {$failures}" );
 exit( $failures > 0 ? 1 : 0 );

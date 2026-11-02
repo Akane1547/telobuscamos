@@ -48,8 +48,26 @@ class AdminRadius {
 			return;
 		}
 
-		$rango = Radius::all();
-		$error = isset( $_GET['error'] ) ? sanitize_key( wp_unslash( $_GET['error'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$guardado = Radius::all();
+		$error    = isset( $_GET['error'] ) ? sanitize_key( wp_unslash( $_GET['error'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$valores  = $guardado;
+
+		// Un guardado rechazado tiene que devolver el formulario con lo que el
+		// usuario escribió. Si vuelve con los valores viejos, el siguiente
+		// intento guarda los viejos y parece que la pantalla no hace nada.
+		if ( '' !== $error ) {
+			$intento = get_transient( $this->transient_key() );
+
+			if ( is_array( $intento ) && isset( $intento['valores'] ) && is_array( $intento['valores'] ) ) {
+				$valores = array(
+					'min_m'  => (int) ( $intento['valores']['min_m'] ?? $guardado['min_m'] ),
+					'max_m'  => (int) ( $intento['valores']['max_m'] ?? $guardado['max_m'] ),
+					'step_m' => (int) ( $intento['valores']['step_m'] ?? $guardado['step_m'] ),
+				);
+			}
+
+			delete_transient( $this->transient_key() );
+		}
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Radio de búsqueda', 'simple-form' ); ?></h1>
@@ -62,7 +80,7 @@ class AdminRadius {
 
 			<?php if ( '' !== $error ) : ?>
 				<div class="notice notice-error is-dismissible">
-					<p><?php echo esc_html( $this->error_message( $error ) ); ?></p>
+					<p><strong><?php esc_html_e( 'No se guardó:', 'simple-form' ); ?></strong> <?php echo esc_html( $this->error_message( $error, $valores ) ); ?></p>
 				</div>
 			<?php endif; ?>
 
@@ -71,9 +89,9 @@ class AdminRadius {
 				printf(
 					/* translators: 1: mínimo actual, 2: máximo actual, 3: paso */
 					esc_html__( 'El cliente elige el radio del mapa con un slider que va desde el mínimo hasta el máximo, de a un paso. Hoy el rango es %1$s a %2$s, de %3$s en %3$s.', 'simple-form' ),
-					esc_html( Radius::format( $rango['min_m'] / 1000 ) ),
-					esc_html( Radius::format( $rango['max_m'] / 1000 ) ),
-					esc_html( (string) $rango['step_m'] . ' m' )
+					esc_html( Radius::format( $guardado['min_m'] / 1000 ) ),
+					esc_html( Radius::format( $guardado['max_m'] / 1000 ) ),
+					esc_html( (string) $guardado['step_m'] . ' m' )
 				);
 				?>
 			</p>
@@ -89,7 +107,7 @@ class AdminRadius {
 								<label for="sf-radius-min"><?php esc_html_e( 'Radio mínimo', 'simple-form' ); ?></label>
 							</th>
 							<td>
-								<input type="number" id="sf-radius-min" name="<?php echo esc_attr( self::FIELD ); ?>[min_m]" value="<?php echo esc_attr( (string) $rango['min_m'] ); ?>" min="<?php echo esc_attr( (string) Radius::FLOOR_M ); ?>" max="<?php echo esc_attr( (string) Radius::CEIL_M ); ?>" step="<?php echo esc_attr( (string) Radius::STEP_MIN_M ); ?>" class="small-text" />
+								<input type="number" id="sf-radius-min" name="<?php echo esc_attr( self::FIELD ); ?>[min_m]" value="<?php echo esc_attr( (string) $valores['min_m'] ); ?>" min="<?php echo esc_attr( (string) Radius::FLOOR_M ); ?>" max="<?php echo esc_attr( (string) Radius::CEIL_M ); ?>" step="<?php echo esc_attr( (string) Radius::STEP_MIN_M ); ?>" class="small-text" />
 								<span class="description"><?php esc_html_e( 'Metros. Es lo más cerca que puede buscar el cliente.', 'simple-form' ); ?></span>
 							</td>
 						</tr>
@@ -98,7 +116,7 @@ class AdminRadius {
 								<label for="sf-radius-max"><?php esc_html_e( 'Radio máximo', 'simple-form' ); ?></label>
 							</th>
 							<td>
-								<input type="number" id="sf-radius-max" name="<?php echo esc_attr( self::FIELD ); ?>[max_m]" value="<?php echo esc_attr( (string) $rango['max_m'] ); ?>" min="<?php echo esc_attr( (string) ( Radius::FLOOR_M + Radius::STEP_MIN_M ) ); ?>" max="<?php echo esc_attr( (string) Radius::CEIL_M ); ?>" step="<?php echo esc_attr( (string) Radius::STEP_MIN_M ); ?>" class="small-text" />
+								<input type="number" id="sf-radius-max" name="<?php echo esc_attr( self::FIELD ); ?>[max_m]" value="<?php echo esc_attr( (string) $valores['max_m'] ); ?>" min="<?php echo esc_attr( (string) ( Radius::FLOOR_M + Radius::STEP_MIN_M ) ); ?>" max="<?php echo esc_attr( (string) Radius::CEIL_M ); ?>" step="<?php echo esc_attr( (string) Radius::STEP_MIN_M ); ?>" class="small-text" />
 								<span class="description">
 									<?php
 									printf(
@@ -115,7 +133,7 @@ class AdminRadius {
 								<label for="sf-radius-step"><?php esc_html_e( 'Paso del slider', 'simple-form' ); ?></label>
 							</th>
 							<td>
-								<input type="number" id="sf-radius-step" name="<?php echo esc_attr( self::FIELD ); ?>[step_m]" value="<?php echo esc_attr( (string) $rango['step_m'] ); ?>" min="<?php echo esc_attr( (string) Radius::STEP_MIN_M ); ?>" step="<?php echo esc_attr( (string) Radius::STEP_MIN_M ); ?>" class="small-text" />
+								<input type="number" id="sf-radius-step" name="<?php echo esc_attr( self::FIELD ); ?>[step_m]" value="<?php echo esc_attr( (string) $valores['step_m'] ); ?>" min="<?php echo esc_attr( (string) Radius::STEP_MIN_M ); ?>" step="<?php echo esc_attr( (string) Radius::STEP_MIN_M ); ?>" class="small-text" />
 								<span class="description"><?php esc_html_e( 'Metros. Cuánto salta el slider en cada movimiento; no puede ser mayor que el rango.', 'simple-form' ); ?></span>
 							</td>
 						</tr>
@@ -163,6 +181,21 @@ class AdminRadius {
 		}
 
 		if ( '' !== $error ) {
+			// Se guarda el intento para que la pantalla vuelva con estos valores:
+			// si vuelve con los guardados, el próximo guardado manda los viejos
+			// y el rango no cambia nunca.
+			set_transient(
+				$this->transient_key(),
+				array(
+					'valores' => array(
+						'min_m'  => $min,
+						'max_m'  => $max,
+						'step_m' => $step,
+					),
+				),
+				5 * MINUTE_IN_SECONDS
+			);
+
 			wp_safe_redirect( $this->url( array( 'error' => $error ) ) );
 			exit;
 		}
@@ -187,6 +220,15 @@ class AdminRadius {
 	}
 
 	/**
+	 * Clave del intento rechazado, por usuario.
+	 *
+	 * @return string
+	 */
+	private function transient_key(): string {
+		return 'sf_radius_intento_' . get_current_user_id();
+	}
+
+	/**
 	 * @param mixed $value
 	 * @return int
 	 */
@@ -195,24 +237,44 @@ class AdminRadius {
 	}
 
 	/**
+	 * Mensaje del error con los números del intento, para que se entienda qué
+	 * corregir sin adivinar.
+	 *
 	 * @param string $code
+	 * @param array  $valores
 	 * @return string
 	 */
-	private function error_message( string $code ): string {
+	private function error_message( string $code, array $valores ): string {
+		$min  = (int) ( $valores['min_m'] ?? 0 );
+		$max  = (int) ( $valores['max_m'] ?? 0 );
+		$step = (int) ( $valores['step_m'] ?? 0 );
+
 		switch ( $code ) {
 			case 'max':
 				return sprintf(
-					/* translators: 1: mínimo admitido, 2: máximo admitido */
-					__( 'El radio máximo tiene que estar entre %1$d y %2$d metros.', 'simple-form' ),
+					/* translators: 1: mínimo admitido, 2: máximo admitido, 3: valor escrito */
+					__( 'el radio máximo tiene que estar entre %1$d y %2$d metros, y escribiste %3$d.', 'simple-form' ),
 					Radius::FLOOR_M + Radius::STEP_MIN_M,
-					Radius::CEIL_M
+					Radius::CEIL_M,
+					$max
 				);
 			case 'min':
-				return __( 'El radio mínimo tiene que ser menor que el máximo y no puede bajar de 10 metros.', 'simple-form' );
+				return sprintf(
+					/* translators: 1: piso en metros, 2: máximo escrito, 3: mínimo escrito */
+					__( 'el radio mínimo no puede bajar de %1$d metros ni ser igual o mayor que el máximo (%2$d m), y escribiste %3$d m.', 'simple-form' ),
+					Radius::FLOOR_M,
+					$max,
+					$min
+				);
 			case 'step':
-				return __( 'El paso tiene que ser de 10 metros o más y no puede superar la diferencia entre el mínimo y el máximo.', 'simple-form' );
+				return sprintf(
+					/* translators: 1: rango disponible en metros, 2: paso escrito */
+					__( 'el paso tiene que ser de 10 metros o más y no puede superar el rango disponible (%1$d m), y escribiste %2$d m.', 'simple-form' ),
+					max( 0, $max - $min ),
+					$step
+				);
 			default:
-				return __( 'No se pudo guardar el rango: revisa los valores.', 'simple-form' );
+				return __( 'revisa los valores.', 'simple-form' );
 		}
 	}
 }

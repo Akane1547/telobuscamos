@@ -416,6 +416,47 @@ async function main() {
 		check( 'el mínimo del rango se acepta', radiocheck.dentro, undefined );
 		check( 'la barra del radio no se sale de su caja', sliderRadio.dentro, true );
 
+		// Un borrador guardado con un radio que el rango actual ya no permite
+		// (el admin bajó el máximo): el slider, la etiqueta, el campo oculto y
+		// el resumen tienen que decir lo mismo, o se manda un radio que el
+		// servidor rechaza y el usuario ve que "no pasa nada".
+		const ajuste = await evaluar( `(() => {
+			const form = document.querySelector('#pn-payment-form');
+			const maxKm = window.SimpleFormConfig.radius.maxKm;
+			window.SimpleFormUI.fillStepData( form, { radius_km: maxKm * 3 } );
+			const s = document.querySelector('#pn-map-radius');
+			const metros = parseInt( s.max, 10 );
+			return {
+				slider: String( s.value ),
+				max: String( metros ),
+				oculto: parseFloat( document.querySelector('#pn-radius').value ),
+				esperadoKm: metros / 1000,
+				etiqueta: document.querySelector('.map-plugin__radio-value').textContent.trim(),
+				esperada: window.SimpleForm.formatRadius( metros / 1000 ),
+				resumen: ( document.querySelector('#pn-summary-radius') || {} ).textContent || '',
+			};
+		})()` );
+
+		check( 'un radio fuera de rango se recorta al máximo', ajuste.slider, ajuste.max );
+		check( 'el campo oculto va con el recorte', ajuste.oculto, ajuste.esperadoKm );
+		check( 'la etiqueta dice el máximo', ajuste.etiqueta, ajuste.esperada );
+		check( 'el resumen dice el máximo', ajuste.resumen, ajuste.esperada );
+
+		// Y el validador lo acepta: es un valor del rango.
+		check(
+			'el radio recortado pasa la validación',
+			await evaluar( "window.SimpleFormValidator.step2( document.querySelector('#pn-payment-form') ).errors.radius_km" ),
+			undefined
+		);
+
+		// Se vuelve al mínimo para no arrastrar el cambio al resto del smoke.
+		await evaluar( `(() => {
+			const s = document.querySelector('#pn-map-radius');
+			s.value = s.min;
+			s.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+			return true;
+		})()` );
+
 		// ------------------------------------------------------------------
 		console.log( '\n=== Buscador de direcciones ===' );
 

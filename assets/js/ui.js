@@ -148,24 +148,65 @@
 		 * @param {Object} data Datos del paso (tal como los devuelve el servidor).
 		 */
 		fillStepData( form, data = {} ) {
+			let radioAjustado = false;
+
 			Object.keys( data ).forEach( ( key ) => {
 				const input = form.querySelector( `[name="${ key }"]` );
 				if ( input ) {
 					input.value = data[ key ];
 				}
 			} );
-			// Sincroniza slider y etiqueta del radio (el hidden solo guarda el valor).
+			// Sincroniza slider, etiqueta y campo oculto del radio.
+			//
+			// Un borrador guardado con el rango viejo puede tener un radio que el
+			// rango actual ya no permite (el admin bajó el máximo). El navegador
+			// recorta el slider solo, pero el campo oculto y la etiqueta seguirían
+			// diciendo lo de antes: se lee de vuelta lo que el slider aceptó y se
+			// escribe eso en los tres lados, para que no se pueda enviar un radio
+			// que el servidor va a rechazar.
 			if ( data.radius_km ) {
 				const slider = form.querySelector( '#pn-map-radius' );
+				const hidden = form.querySelector( '#pn-radius' );
 				const label = form.querySelector( '.map-plugin__radio-value' );
-				// El slider va en metros; lo guardado viene en km.
+				let km = parseFloat( data.radius_km );
+
 				if ( slider ) {
-					slider.value = Math.round( parseFloat( data.radius_km ) * 1000 );
+					// El slider va en metros; lo guardado viene en km.
+					slider.value = Math.round( km * 1000 );
+
+					const ajustado = parseFloat( slider.value );
+
+					if ( ajustado > 0 ) {
+						radioAjustado = Math.abs( ajustado - Math.round( km * 1000 ) ) > 0.5;
+						km = ajustado / 1000;
+
+						if ( hidden ) {
+							hidden.value = String( km );
+						}
+					}
 				}
+
 				if ( label ) {
-					label.textContent = window.SimpleForm.formatRadius( data.radius_km );
+					label.textContent = window.SimpleForm.formatRadius( km );
+				}
+
+				// El resumen del costado también muestra el radio: si se ajustó,
+				// tiene que decir lo mismo que el slider.
+				const resumen = form.querySelector( '#pn-summary-radius' );
+
+				if ( resumen ) {
+					resumen.textContent = window.SimpleForm.formatRadius( km );
+				}
+
+				// Si el mapa ya está montado, esto dispara el recálculo del
+				// precio con el radio ajustado. Si no, el precio lo pide el mapa
+				// cuando se muestra el Paso 2.
+				if ( slider ) {
+					slider.dispatchEvent( new Event( 'input', { bubbles: true } ) );
 				}
 			}
+
+			return { radiusAdjusted: radioAjustado };
 		},
 
 		/**

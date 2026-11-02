@@ -228,6 +228,42 @@ try {
 	check( 'paso mayor que el rango: error', false !== strpos( $guardar( array( 'min_m' => 100, 'max_m' => 200, 'step_m' => 5000 ) ), 'error=step' ), true );
 	check( 'paso de menos de 10 m: error', false !== strpos( $guardar( array( 'min_m' => 100, 'max_m' => 900, 'step_m' => 5 ) ), 'error=step' ), true );
 	check( 'mínimo bajo el piso: error', false !== strpos( $guardar( array( 'min_m' => 1, 'max_m' => 900, 'step_m' => 100 ) ), 'error=min' ), true );
+
+	// El caso real que reportó el dueño: 10 m de mínimo y 100 m de máximo con
+	// paso 100 (mayor que el rango de 90). Se rechaza, pero el formulario tiene
+	// que volver con lo que escribió y no con lo guardado.
+	$destino = $guardar( array( 'min_m' => 10, 'max_m' => 100, 'step_m' => 100 ) );
+
+	check( 'paso mayor que el rango: error', false !== strpos( $destino, 'error=step' ), true );
+
+	$intento = get_transient( 'sf_radius_intento_' . get_current_user_id() );
+
+	check( 'el intento rechazado se conserva para el formulario', is_array( $intento ) ? $intento['valores'] : null, array( 'min_m' => 10, 'max_m' => 100, 'step_m' => 100 ) );
+	check( 'y el rango guardado no cambió', Radius::all(), array( 'min_m' => 500, 'max_m' => 3000, 'step_m' => 250 ) );
+
+	delete_transient( 'sf_radius_intento_' . get_current_user_id() );
+
+	// Con el paso corregido, esos mismos valores son válidos y se guardan.
+	$destino = $guardar( array( 'min_m' => 10, 'max_m' => 100, 'step_m' => 10 ) );
+
+	check( '10/100/10 con paso 10: guarda', false !== strpos( $destino, 'updated=1' ), true );
+	check( 'y el rango queda 10 a 100 de a 10', Radius::all(), array( 'min_m' => 10, 'max_m' => 100, 'step_m' => 10 ) );
+
+	// El slider del formulario sale con ese rango.
+	update_option( Radius::OPTION, array( 'min_m' => 10, 'max_m' => 100, 'step_m' => 10 ) );
+
+	// Shortcode::$rendered es estático (un formulario por página): para volver a
+	// renderizar en este mismo proceso hay que soltarlo.
+	$flag = new ReflectionProperty( Shortcode::class, 'rendered' );
+	$flag->setAccessible( true );
+	$flag->setValue( null, false );
+
+	$html = ( new Shortcode( new Assets( 'test' ) ) )->render( array() );
+
+	check( 'slider con mínimo 10', preg_match( '/id="pn-map-radius"[^>]*min="10"/s', $html ), 1 );
+	check( 'slider con máximo 100', preg_match( '/id="pn-map-radius"[^>]*max="100"/s', $html ), 1 );
+	check( 'slider con paso 10', preg_match( '/id="pn-map-radius"[^>]*step="10"/s', $html ), 1 );
+	check( 'campo en km en 0.01', preg_match( '/id="pn-radius"[^>]*value="0.01"/s', $html ), 1 );
 } catch ( Throwable $e ) {
 	echo "\nERROR EN LA PRUEBA: " . $e->getMessage() . "\n";
 	++$failures;

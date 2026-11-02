@@ -32,6 +32,13 @@
 			? window.SimpleFormConfig.geocoder
 			: null,
 
+		// Rango del radio del mapa (lo fija el admin en SimpleForm → Radio de
+		// búsqueda). El slider ya viene pintado con él; el validador lo usa para
+		// no tener el 0.1–1 escrito a mano. El respaldo es el de fábrica.
+		radius: window.SimpleFormConfig && window.SimpleFormConfig.radius
+			? window.SimpleFormConfig.radius
+			: { minKm: 0.1, maxKm: 1, stepM: 100 },
+
 		// Punto de partida del pin (Santiago) y vista inicial. El encuadre
 		// definitivo lo fija el contorno que envía el servidor.
 		defaultCenter: window.SimpleFormConfig && window.SimpleFormConfig.defaultCenter

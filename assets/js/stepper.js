@@ -184,8 +184,19 @@
 				UI.fillStepData( form, result.progress.step1 );
 			}
 			if ( result.progress.step2 ) {
-				UI.fillStepData( form, result.progress.step2 );
+				// El resumen primero: fillStepData puede ajustar el radio al rango
+				// vigente y lo que escribe él es lo que vale.
 				UI.updateSummary( wrapper, result.progress.step2 );
+
+				const relleno = UI.fillStepData( form, result.progress.step2 );
+
+				// El borrador traía un radio que el rango actual ya no permite (el
+				// admin lo cambió). El precio guardado es de ese radio viejo, así
+				// que se vuelve al Paso 2: el mapa pide el precio de nuevo con el
+				// radio ajustado y el cliente ve cuánto sale antes de pagar.
+				if ( relleno && relleno.radiusAdjusted ) {
+					SF.state.currentStep = Math.min( 2, SF.state.currentStep );
+				}
 			}
 
 			renderCurrentStep( wrapper );

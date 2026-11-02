@@ -4,7 +4,7 @@ Tags: formulario, pago, mercadopago, servicios, mapa
 Requires at least: 6.0
 Requires PHP: 7.4
 Tested up to: 6.7
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,11 @@ No. Cada pedido guarda un snapshot de la etiqueta, el precio base y el precio po
 Porque todavía no se configuró ninguno en *Pedidos → Pagos*. Hasta que no haya un medio habilitado, el formulario no ofrece ninguno.
 
 == Changelog ==
+
+= 1.4.1 =
+* **El rango del radio sí llega al formulario.** `config.js` no publicaba `radius` en `window.SimpleForm`, así que el validador del navegador seguía con el 0.1–1 fijo y rechazaba o aceptaba de más según el rango configurado.
+* **Un guardado rechazado ya no borra lo que escribiste**: la pantalla vuelve con los valores del intento y el aviso dice con números qué corregir (por ejemplo, "el paso no puede superar el rango disponible (90 m), y escribiste 100 m"). Antes volvía con los valores guardados y el siguiente intento guardaba esos: parecía que la pantalla no hacía nada.
+* **Un borrador guardado con un radio que el rango nuevo ya no permite** se ajusta al máximo y vuelve al Paso 2, con el slider, la etiqueta, el campo oculto y el resumen coincidiendo y el precio recalculado por el servidor.
 
 = 1.4.0 =
 * **Menú general SimpleForm**: las secciones dejan de ser menús sueltos y cuelgan de uno solo (Servicios de pago, Medios de pago, Radio de búsqueda, Catálogos del objeto y Pedidos). Los slugs no cambian.
