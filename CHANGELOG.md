@@ -1,5 +1,16 @@
 # Cambios
 
+## 673c3aa - Fix: en Mercado Pago el modo lo decide la credencial
+
+Búsqueda de errores de diseño en el pago. Tres agujeros reales y un hueco de UX:
+
+- **El modo de Mercado Pago era decorativo**: el panel decía "Pruebas (no cobra)" con un token `APP_USR-` (producción) guardado, y `MercadoPagoGateway` nunca consultaba `mode()`. Ahora `PaymentConfig::mode_from_token()` detecta el ambiente de la credencial (`TEST-`/`APP_USR-`; desconocido = producción), `mode()`/`desired_mode()` la usan, el selector queda bloqueado con la explicación y `save()` guarda el modo que implica el token. `token_any_mode()` corta la recursión entre modo y credencial (la primera versión agotaba la memoria).
+- **El guard del HTTPS ahora es real**: un token de producción con el sitio sin HTTPS no crea pagos (`create_payment()` devuelve vacío). El panel muestra "Credencial de producción sin HTTPS" o "Modo comercial: cobra dinero real" según el caso.
+- **Reintentar un pago rechazado**: el recibo ofrece "Reintentar el pago" (vuelve al Paso 3 con la misma sesión; `rejected → pending`); antes solo había "Hacer otro pedido", que empezaba de cero.
+- **Suites**: usan `simple_form_rate_limit` para correr seguidas sin llegar a 429 (`test-rate-limit` no); `test-ajax-flow` fija un token `TEST-` propio y restaura credenciales; `test-admin-screen` se reescribió para el modelo de credencial.
+- **Nueva** `test-payment-flows.php`: cinco recorridos completos con configuraciones distintas (30 comprobaciones), incluido el pago de otro pedido que no puede tocar el estado.
+- 216 unitarias, 13 suites de integración, 182 de seguridad y front en verde. Túnel de ngrok verificado; falta el token `TEST-` de Mercado Pago para cobrar en sandbox.
+
 ## 3ee998f - Feat: PayPal como pasarela real
 
 - **src/Payments/PayPalGateway.php** (nuevo): Orders v2. `create_payment()` pide el token (Basic + client_credentials), crea la orden con `intent: CAPTURE`, `custom_id` = id del pedido y `PayPal-Request-Id` por borrador, guarda el id externo y devuelve el enlace `approve`. `fetch_payment()` consulta la orden y **captura** si está APPROVED (tolera `ORDER_ALREADY_CAPTURED`, conserva el `custom_id` si la captura no lo repite). `map_status()` traduce los 11 estados.
