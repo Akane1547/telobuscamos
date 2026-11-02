@@ -289,6 +289,9 @@ class Shortcode {
 							</div>
 
 							<div class="pn-receipt__actions">
+								<?php // Reintentar el pago del mismo pedido: el servidor lo permite
+								// (rejected -> pending), pero hasta ahora el cliente no tenía cómo. ?>
+								<button type="button" class="pn-btn" data-action="retry" hidden><?php esc_html_e( 'Reintentar el pago', 'simple-form' ); ?></button>
 								<button type="button" class="pn-btn pn-btn--ghost" data-action="restart"><?php esc_html_e( 'Hacer otro pedido', 'simple-form' ); ?></button>
 							</div>
 						</div>

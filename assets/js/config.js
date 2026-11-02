@@ -56,6 +56,7 @@
 			navNext: '[data-action="next"]',
 			navSubmit: '[data-action="submit"]',
 			receiptRestart: '[data-action="restart"]',
+			receiptRetry: '[data-action="retry"]',
 			feedback: '.pn-form__feedback',
 			receiptBadge: '.pn-receipt__badge',
 			mapContainer: '#map-plugin',

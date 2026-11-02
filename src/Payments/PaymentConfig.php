@@ -104,6 +104,11 @@ final class PaymentConfig {
 			return ( self::MODE_PRODUCTION === constant( $name ) ) ? self::MODE_PRODUCTION : self::MODE_SANDBOX;
 		}
 
+		// En Mercado Pago manda la credencial: el selector no puede contradecirla.
+		if ( 'mercado_pago' === $gateway_id ) {
+			return self::mode_from_token( self::token_any_mode( $gateway_id ) );
+		}
+
 		$stored = self::stored( $gateway_id );
 
 		return ( isset( $stored['mode'] ) && self::MODE_PRODUCTION === $stored['mode'] )
@@ -122,11 +127,42 @@ final class PaymentConfig {
 	 * @return string
 	 */
 	public static function mode( string $gateway_id ): string {
+		// Mercado Pago: el ambiente es el de la credencial, punto. Si es de
+		// producción y el sitio no está en HTTPS, la pasarela se niega a crear el
+		// pago (create_payment); no se disfraza de pruebas.
+		if ( 'mercado_pago' === $gateway_id ) {
+			return self::desired_mode( $gateway_id );
+		}
+
 		if ( self::MODE_PRODUCTION !== self::desired_mode( $gateway_id ) ) {
 			return self::MODE_SANDBOX;
 		}
 
 		return self::site_is_https() ? self::MODE_PRODUCTION : self::MODE_SANDBOX;
+	}
+
+	/**
+	 * Modo que implica una credencial de Mercado Pago.
+	 *
+	 * Sus credenciales de prueba empiezan con `TEST-` y las de producción con
+	 * `APP_USR-`: en Mercado Pago **la credencial decide el ambiente**, no un
+	 * selector. Un token de producción guardado con el panel en "pruebas" cobra
+	 * dinero real igual, así que el modo no puede ser una preferencia.
+	 *
+	 * Cualquier otro formato se trata como producción (el lado que cobra): es la
+	 * suposición segura.
+	 *
+	 * @param string $token
+	 * @return string
+	 */
+	public static function mode_from_token( string $token ): string {
+		$token = strtoupper( trim( $token ) );
+
+		if ( '' === $token ) {
+			return self::MODE_SANDBOX;
+		}
+
+		return 0 === strpos( $token, 'TEST-' ) ? self::MODE_SANDBOX : self::MODE_PRODUCTION;
 	}
 
 	/**
@@ -136,7 +172,51 @@ final class PaymentConfig {
 	 * @return bool
 	 */
 	public static function mode_is_locked( string $gateway_id ): bool {
+		if ( 'mercado_pago' === $gateway_id ) {
+			// Lo decide la credencial, siempre.
+			return true;
+		}
+
 		return defined( self::constant_name( $gateway_id, 'mode' ) );
+	}
+
+	/**
+	 * Access token de una pasarela, sin pasar por mode().
+	 *
+	 * `credential()` elige el juego de claves según el modo, y en Mercado Pago el
+	 * modo sale de la credencial: pedir el token con credential() sería circular.
+	 * Esto lee la constante, después el juego del modo guardado y, si ahí no hay
+	 * nada, cualquiera de los dos (así también encuentra un token de producción
+	 * pegado mientras el modo guardado era pruebas).
+	 *
+	 * @param string $gateway_id
+	 * @return string
+	 */
+	private static function token_any_mode( string $gateway_id ): string {
+		$name = self::constant_name( $gateway_id, 'access_token' );
+
+		if ( defined( $name ) && '' !== (string) constant( $name ) ) {
+			return (string) constant( $name );
+		}
+
+		$stored = self::stored( $gateway_id );
+		$modo   = ( isset( $stored['mode'] ) && self::MODE_PRODUCTION === $stored['mode'] ) ? self::MODE_PRODUCTION : self::MODE_SANDBOX;
+
+		$token = self::stored_credential( $gateway_id, $modo, 'access_token' );
+
+		if ( '' !== $token ) {
+			return $token;
+		}
+
+		foreach ( self::modes() as $m ) {
+			$token = self::stored_credential( $gateway_id, $m, 'access_token' );
+
+			if ( '' !== $token ) {
+				return $token;
+			}
+		}
+
+		return '';
 	}
 
 	/**
@@ -240,6 +320,16 @@ final class PaymentConfig {
 		}
 
 		$mode = ( self::MODE_PRODUCTION === $mode ) ? self::MODE_PRODUCTION : self::MODE_SANDBOX;
+
+		// Mercado Pago: el modo guardado tiene que ser el que implica la
+		// credencial, para que la opción no diga "pruebas" con un token real.
+		if ( 'mercado_pago' === $gateway_id ) {
+			$token = isset( $plain_fields['access_token'] ) && '' !== $plain_fields['access_token']
+				? (string) $plain_fields['access_token']
+				: self::token_any_mode( $gateway_id );
+
+			$mode = self::mode_from_token( $token );
+		}
 
 		$all = get_option( self::OPTION_CREDENTIALS, array() );
 		$all = is_array( $all ) ? $all : array();

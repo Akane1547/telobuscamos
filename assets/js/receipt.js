@@ -65,8 +65,29 @@
 			}
 
 			renderBadge( wrapper, progress );
+			renderRetry( wrapper, progress );
 		},
 	};
+
+	/**
+	 * Muestra "Reintentar el pago" solo cuando el pedido admite otro intento.
+	 *
+	 * Es el único estado no final que puede volver a la pasarela con el mismo
+	 * pedido: el servidor hace rejected -> pending en save_step3. Un pedido
+	 * aprobado, cancelado o expirado no se reintenta.
+	 *
+	 * @param {HTMLElement} wrapper
+	 * @param {Object} progress
+	 */
+	function renderRetry( wrapper, progress ) {
+		const boton = wrapper.querySelector( window.SimpleForm.selectors.receiptRetry );
+
+		if ( ! boton ) {
+			return;
+		}
+
+		boton.hidden = 'rejected' !== ( progress.status || '' );
+	}
 
 	/**
 	 * Pinta el estado del pedido tal como lo reporta el servidor.

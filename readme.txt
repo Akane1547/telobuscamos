@@ -4,7 +4,7 @@ Tags: formulario, pago, mercadopago, servicios, mapa
 Requires at least: 6.0
 Requires PHP: 7.4
 Tested up to: 6.7
-Stable tag: 1.7.0
+Stable tag: 1.7.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,11 @@ No. Cada pedido guarda un snapshot de la etiqueta, el precio base y el precio po
 Porque todavía no se configuró ninguno en *Pedidos → Pagos*. Hasta que no haya un medio habilitado, el formulario no ofrece ninguno.
 
 == Changelog ==
+
+= 1.7.1 =
+* **Seguridad de cobro**: en Mercado Pago el ambiente lo decide la credencial (TEST- es pruebas, APP_USR- es producción). Antes el panel decía "Pruebas (no cobra)" con un token de producción guardado y la pasarela ignoraba el modo: se podía cobrar de verdad creyendo estar en pruebas.
+* Un token de producción con el sitio sin HTTPS ahora **no crea pagos** (antes los creaba igual) y el panel lo avisa. Cambiar solo el selector de modo no cambia el ambiente: para volver a pruebas hay que pegar un token TEST-.
+* **Reintentar un pago rechazado**: el recibo muestra "Reintentar el pago" y vuelve al Paso 3 reutilizando el pedido, en vez de obligar a cargar todo de nuevo.
 
 = 1.7.0 =
 * **PayPal como pasarela real**: se agrega desde *Medios de pago* con un botón, se cargan Client ID, Client Secret y la tasa CLP→USD, y quedan guardadas en las opciones del sitio (cifradas y por modo, pruebas/comercial).

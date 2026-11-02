@@ -49,7 +49,7 @@ final class PaymentConfigTest extends TestCase {
 	}
 
 	public function test_la_constante_gana_al_valor_guardado(): void {
-		$this->assertSame( 'CONST-DE-PRUEBA-EN-EL-BOOTSTRAP', PaymentConfig::credential( 'mercado_pago', 'access_token' ) );
+		$this->assertSame( 'TEST-CONST-DE-PRUEBA-EN-EL-BOOTSTRAP', PaymentConfig::credential( 'mercado_pago', 'access_token' ) );
 		$this->assertSame( 'constant', PaymentConfig::source( 'mercado_pago', 'access_token' ) );
 	}
 
@@ -73,23 +73,41 @@ final class PaymentConfigTest extends TestCase {
 	}
 
 	/**
-	 * Sin HTTPS no se puede cobrar de verdad, pero las claves no se pierden: se
-	 * guardan y el modo comercial queda elegido sin activarse.
+	 * En Mercado Pago el ambiente lo decide la credencial: TEST- es pruebas y
+	 * APP_USR- es producción (documentación de credenciales).
 	 */
-	public function test_produccion_por_http_guarda_las_claves_pero_no_activa(): void {
-		FakeWordPress::set_home( 'http://telobuscamos.local' );
-
-		$this->assertSame( 'https', PaymentConfig::save( 'mercado_pago', 'production', self::CAMPOS_PROD ) );
-		$this->assertSame( 'production', PaymentConfig::desired_mode( 'mercado_pago' ) );
-		$this->assertSame( 'sandbox', PaymentConfig::mode( 'mercado_pago' ) );
-		$this->assertTrue( PaymentConfig::has_keys( 'mercado_pago', 'production' ) );
+	public function test_el_modo_de_mercado_pago_sale_del_tipo_de_token(): void {
+		$this->assertSame( 'sandbox', PaymentConfig::mode_from_token( 'TEST-1234' ) );
+		$this->assertSame( 'sandbox', PaymentConfig::mode_from_token( 'test-1234' ) );
+		$this->assertSame( 'production', PaymentConfig::mode_from_token( 'APP_USR-1234' ) );
+		// Sin token no hay nada que cobrar: pruebas.
+		$this->assertSame( 'sandbox', PaymentConfig::mode_from_token( '' ) );
+		// Un formato desconocido se trata como producción: el lado que cobra.
+		$this->assertSame( 'production', PaymentConfig::mode_from_token( 'otro-formato' ) );
 	}
 
-	public function test_produccion_por_https_si_se_activa(): void {
+	/**
+	 * PayPal sí tiene un selector de modo; sin HTTPS la producción no se activa
+	 * (no hay vuelta ni notificación posibles).
+	 */
+	public function test_paypal_produccion_por_http_guarda_las_claves_pero_no_activa(): void {
+		FakeWordPress::set_home( 'http://telobuscamos.local' );
+
+		$this->assertSame( 'https', PaymentConfig::save( 'paypal', 'production', array( 'client_secret' => 'secreto-pp' ) ) );
+		$this->assertSame( 'production', PaymentConfig::desired_mode( 'paypal' ) );
+		$this->assertSame( 'sandbox', PaymentConfig::mode( 'paypal' ) );
+
+		// La clave quedó guardada en el juego de producción aunque no se active.
+		$guardado = FakeWordPress::get_option( PaymentConfig::OPTION_CREDENTIALS );
+
+		$this->assertArrayHasKey( 'client_secret', $guardado['paypal']['production'] );
+	}
+
+	public function test_paypal_produccion_por_https_si_se_activa(): void {
 		FakeWordPress::set_home( 'https://ejemplo.cl' );
 
-		$this->assertSame( '', PaymentConfig::save( 'mercado_pago', 'production', self::CAMPOS_PROD ) );
-		$this->assertSame( 'production', PaymentConfig::mode( 'mercado_pago' ) );
+		$this->assertSame( '', PaymentConfig::save( 'paypal', 'production', array() ) );
+		$this->assertSame( 'production', PaymentConfig::mode( 'paypal' ) );
 	}
 
 	public function test_un_modo_inventado_se_normaliza_a_sandbox(): void {
@@ -138,26 +156,26 @@ final class PaymentConfigTest extends TestCase {
 	public function test_cada_modo_guarda_sus_propias_claves(): void {
 		FakeWordPress::set_home( 'https://ejemplo.cl' );
 
-		PaymentConfig::save( 'mercado_pago', 'sandbox', self::CAMPOS );
-		PaymentConfig::save( 'mercado_pago', 'production', self::CAMPOS_PROD );
+		PaymentConfig::save( 'paypal', 'sandbox', array( 'client_secret' => 'secreto-de-prueba' ) );
+		PaymentConfig::save( 'paypal', 'production', array( 'client_secret' => 'secreto-de-produccion' ) );
 
 		$guardado = FakeWordPress::get_option( PaymentConfig::OPTION_CREDENTIALS );
 
 		$this->assertNotSame(
-			$guardado['mercado_pago']['sandbox']['webhook_secret'],
-			$guardado['mercado_pago']['production']['webhook_secret']
+			$guardado['paypal']['sandbox']['client_secret'],
+			$guardado['paypal']['production']['client_secret']
 		);
 
 		// En producción se lee su secreto, no el de pruebas.
-		$this->assertSame( 'secreto-de-produccion', PaymentConfig::credential( 'mercado_pago', 'webhook_secret' ) );
+		$this->assertSame( 'secreto-de-produccion', PaymentConfig::credential( 'paypal', 'client_secret' ) );
 
 		// Volver a pruebas sigue leyendo el suyo.
-		PaymentConfig::save( 'mercado_pago', 'sandbox', array() );
-		$this->assertSame( 'secreto-web-de-prueba', PaymentConfig::credential( 'mercado_pago', 'webhook_secret' ) );
+		PaymentConfig::save( 'paypal', 'sandbox', array() );
+		$this->assertSame( 'secreto-de-prueba', PaymentConfig::credential( 'paypal', 'client_secret' ) );
 
 		// Y las dos siguen guardadas.
-		$this->assertTrue( PaymentConfig::has_keys( 'mercado_pago', 'sandbox' ) );
-		$this->assertTrue( PaymentConfig::has_keys( 'mercado_pago', 'production' ) );
+		$this->assertGreaterThan( 0, PaymentConfig::keys_count( 'paypal', 'sandbox' )['ok'] );
+		$this->assertGreaterThan( 0, PaymentConfig::keys_count( 'paypal', 'production' )['ok'] );
 	}
 
 	public function test_has_keys_pide_todas_las_credenciales(): void {

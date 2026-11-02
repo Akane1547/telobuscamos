@@ -29,7 +29,7 @@ define( 'WEEK_IN_SECONDS', 604800 );
 // Una constante como las de wp-config.php, con valor de mentira, para poder
 // probar que manda sobre lo que se guarda cifrado en la base. Los campos cuya
 // ruta almacenada se prueba (webhook_secret) no tienen constante a propósito.
-define( 'SIMPLE_FORM_MERCADO_PAGO_ACCESS_TOKEN', 'CONST-DE-PRUEBA-EN-EL-BOOTSTRAP' );
+define( 'SIMPLE_FORM_MERCADO_PAGO_ACCESS_TOKEN', 'TEST-CONST-DE-PRUEBA-EN-EL-BOOTSTRAP' );
 
 require_once dirname( __DIR__ ) . '/vendor/autoload.php';
 require_once __DIR__ . '/support/FakeWordPress.php';

@@ -327,6 +327,18 @@
 			restartBtn.addEventListener( 'click', () => restart( wrapper ) );
 		}
 
+		// Reintentar el pago: se vuelve al Paso 3 con la misma sesión, así el
+		// servidor reutiliza el pedido (rejected -> pending) en vez de crear uno
+		// nuevo y el cliente no tiene que cargar todo otra vez.
+		const retryBtn = wrapper.querySelector( SF.selectors.receiptRetry );
+
+		if ( retryBtn ) {
+			retryBtn.addEventListener( 'click', () => {
+				SF.state.currentStep = 3;
+				renderCurrentStep( wrapper );
+			} );
+		}
+
 		// Al cargar: primero los catálogos del objeto (los selects nacen vacíos),
 		// después se retoma la sesión y, si el comprador viene de pagar, se
 		// verifica el estado real contra el servidor.

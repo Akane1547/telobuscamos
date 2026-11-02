@@ -78,6 +78,18 @@ final class MercadoPagoGateway implements Gateway {
 			return '';
 		}
 
+		// El ambiente de Mercado Pago lo decide la credencial, no el selector:
+		// un token APP_USR- cobra de verdad aunque el panel diga "pruebas". Si la
+		// credencial es de producción y el sitio no está en HTTPS (sin vuelta ni
+		// notificación posibles), no se crea el pago. El guard del modo tiene que
+		// ser real, no un aviso.
+		if ( PaymentConfig::MODE_PRODUCTION === PaymentConfig::mode( self::GATEWAY_ID )
+			&& ! PaymentConfig::site_is_https() ) {
+			$this->log( 'credencial de producción sin HTTPS: no se crea la preferencia' );
+
+			return '';
+		}
+
 		$response = wp_remote_post(
 			self::API_BASE . '/checkout/preferences',
 			array(

@@ -251,6 +251,52 @@ class AdminPayments {
 				)
 			);
 		}
+
+		// Credencial de producción con el sitio fuera de HTTPS: no se cobra nada
+		// hasta que haya HTTPS, pero el panel tiene que decirlo.
+		$bloqueadas = array();
+
+		foreach ( PaymentConfig::enabled_ids() as $id ) {
+			if ( PaymentConfig::MODE_PRODUCTION === PaymentConfig::mode( $id ) && ! PaymentConfig::site_is_https() ) {
+				$bloqueadas[] = Gateways::label( $id );
+			}
+		}
+
+		if ( ! empty( $bloqueadas ) ) {
+			printf(
+				'<div class="notice notice-warning"><p><strong>%s</strong> %s</p></div>',
+				esc_html__( 'Credencial de producción sin HTTPS.', 'simple-form' ),
+				esc_html(
+					sprintf(
+						/* translators: %s: lista de pasarelas. */
+						__( 'No se va a crear ningún pago con estos medios hasta que el sitio sea HTTPS (o hasta que pongas un token de pruebas TEST-): %s.', 'simple-form' ),
+						implode( ', ', $bloqueadas )
+					)
+				)
+			);
+		}
+
+		$en_produccion = array();
+
+		foreach ( PaymentConfig::enabled_ids() as $id ) {
+			if ( PaymentConfig::MODE_PRODUCTION === PaymentConfig::mode( $id ) ) {
+				$en_produccion[] = Gateways::label( $id );
+			}
+		}
+
+		if ( ! empty( $en_produccion ) ) {
+			printf(
+				'<div class="notice notice-error"><p><strong>%s</strong> %s</p></div>',
+				esc_html__( 'Modo comercial: cobra dinero real.', 'simple-form' ),
+				esc_html(
+					sprintf(
+						/* translators: %s: lista de pasarelas en producción. */
+						__( 'Estos medios están con credenciales de producción y cada pago es real: %s.', 'simple-form' ),
+						implode( ', ', $en_produccion )
+					)
+				)
+			);
+		}
 	}
 
 	/**
@@ -331,16 +377,27 @@ class AdminPayments {
 				'<input type="text" class="regular-text" disabled="disabled" value="%s" />',
 				esc_attr( $this->mode_label( $mode ) )
 			);
-			printf(
-				'<p class="description">%s</p>',
-				esc_html(
-					sprintf(
-						/* translators: %s: nombre de la constante de wp-config.php. */
-						__( 'Lo fija %s en wp-config.php.', 'simple-form' ),
-						PaymentConfig::constant_name( $id, 'mode' )
+
+			if ( defined( PaymentConfig::constant_name( $id, 'mode' ) ) ) {
+				printf(
+					'<p class="description">%s</p>',
+					esc_html(
+						sprintf(
+							/* translators: %s: nombre de la constante de wp-config.php. */
+							__( 'Lo fija %s en wp-config.php.', 'simple-form' ),
+							PaymentConfig::constant_name( $id, 'mode' )
+						)
 					)
-				)
-			);
+				);
+			} elseif ( 'mercado_pago' === $id ) {
+				// En Mercado Pago el ambiente lo decide la credencial, no un
+				// selector: decirlo acá evita creer que se está en pruebas.
+				printf(
+					'<p class="description"><strong>%s</strong> %s</p>',
+					esc_html__( 'Lo decide la credencial.', 'simple-form' ),
+					esc_html__( 'Un token que empieza con TEST- es de pruebas (no cobra); uno con APP_USR- es de producción y cobra dinero real. Se detecta solo al guardarlo.', 'simple-form' )
+				);
+			}
 
 			return;
 		}

@@ -16,6 +16,13 @@ define( 'DOING_AJAX', true );
 $sf_site_root = (string) getenv( 'SF_SITE_PATH' );
 require ( '' !== $sf_site_root ? rtrim( $sf_site_root, '/' ) : dirname( __DIR__, 5 ) ) . '/wp-load.php';
 
+// El límite por minuto existe para el sitio real; corriendo 13 suites seguidas
+// desde la misma IP se llega a 429 y las pruebas fallan por un motivo que no
+// tiene que ver con lo que prueban. El hook es el que el propio RateLimit
+// documenta para desactivarlo en pruebas (test-rate-limit.php no lo usa).
+add_filter( 'simple_form_rate_limit', '__return_zero' );
+
+
 use SimpleForm\Payments\OrderStatus;
 use SimpleForm\Payments\PaymentConfig;
 

@@ -2578,8 +2578,15 @@ simple_form_payment_credentials = array(
 
 - Guardar en un modo **no toca** el juego del otro: se puede alternar sin volver
   a escribir las claves.
-- `mode()` es el modo efectivo (producción solo con HTTPS); `desired_mode()` es
-  lo que eligió el admin; `mode_is_locked()` avisa si lo fija `wp-config.php`.
+- **Mercado Pago no tiene selector de modo válido**: el ambiente lo decide la
+  credencial (`TEST-` = pruebas, `APP_USR-` = producción). `mode()` lo detecta de
+  la credencial y el panel no deja creer otra cosa; un token de producción con el
+  sitio sin HTTPS **no crea pagos** (`create_payment()` devuelve vacío), no se
+  "disfraza" de pruebas. Cambiar solo el selector no cambia nada: para volver a
+  pruebas hay que pegar un token `TEST-`.
+- En PayPal, que sí tiene ambientes separados por host, `mode()` es el modo
+  efectivo (producción solo con HTTPS) y `desired_mode()` es la elección del
+  admin. `mode_is_locked()` avisa si una constante de `wp-config.php` lo fija.
 - Guardar en producción sin HTTPS **guarda** las claves y avisa que no se
   activa. Descartar lo escrito hacía perder las claves.
 - Las constantes de `wp-config.php` mandan sobre el panel cuando están
@@ -2626,3 +2633,20 @@ COMPLETED → pedido aprobado (PaymentProcessor, con custom_id = id del pedido)
   sesión, igual que el resto de endpoints.
 - Pendiente para producción: registrar el webhook de PayPal con verificación de
   firma, para confirmar pagos aunque el comprador cierre la pestaña al volver.
+
+### 52.6 Reintentar un pago rechazado
+
+El servidor ya permitía `rejected → pending` al volver a enviar el Paso 3, pero
+el recibo no ofrecía el botón: el cliente solo tenía "Hacer otro pedido" (sesión
+nueva, todo de cero). Ahora el recibo muestra **Reintentar el pago** cuando el
+estado es `rejected`: vuelve al Paso 3 con la misma sesión y el pedido se
+reutiliza. Un pedido aprobado, cancelado o expirado no se reintenta.
+
+### 52.7 Detalles del entorno de prueba
+
+- El túnel gratuito de ngrok interpone una página "You are about to visit…" antes
+  del sitio: el comprador la ve **al volver de Mercado Pago** y tiene que tocar
+  "Visit Site". No es un fallo del plugin, pero conviene saberlo al probar.
+- Las suites de integración corren con `add_filter( 'simple_form_rate_limit',
+  '__return_zero' )`: trece suites seguidas desde la misma IP llegaban a 429 y
+  fallaban por un motivo ajeno a lo que prueban (test-rate-limit no lo usa).

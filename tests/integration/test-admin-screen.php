@@ -19,6 +19,13 @@ define( 'WP_USE_THEMES', false );
 $sf_site_root = (string) getenv( 'SF_SITE_PATH' );
 require ( '' !== $sf_site_root ? rtrim( $sf_site_root, '/' ) : dirname( __DIR__, 5 ) ) . '/wp-load.php';
 
+// El límite por minuto existe para el sitio real; corriendo 13 suites seguidas
+// desde la misma IP se llega a 429 y las pruebas fallan por un motivo que no
+// tiene que ver con lo que prueban. El hook es el que el propio RateLimit
+// documenta para desactivarlo en pruebas (test-rate-limit.php no lo usa).
+add_filter( 'simple_form_rate_limit', '__return_zero' );
+
+
 // Las pantallas del admin se pintan con la API de wp-admin cargada (submit_button
 // y compañía); en un arranque por CLI no lo está.
 require_once ABSPATH . 'wp-admin/includes/admin.php';
@@ -168,7 +175,14 @@ check( 'una pasarela no registrada no se guardó', false !== strpos( (string) js
 check( 'el token se recortó al guardar', 'TEST-token-de-prueba', descifrar( 'mercado_pago', 'sandbox', 'access_token' ) );
 check( 'el secreto se descifra igual', 'secreto-web-2', descifrar( 'mercado_pago', 'sandbox', 'webhook_secret' ) );
 check( 'sandbox tiene las dos claves', $PaymentConfig::has_keys( 'mercado_pago', 'sandbox' ), true );
-check( 'producción todavía no tiene ninguna', $PaymentConfig::has_keys( 'mercado_pago', 'production' ), false );
+
+// El juego de producción que ya tuviera el sitio no se toca al guardar pruebas.
+$hash_prod_antes = md5( (string) ( (array) $prev_credentials )['mercado_pago']['production']['access_token'] ?? '' );
+check(
+	'el juego de producción no se toca',
+	$hash_prod_antes,
+	md5( (string) ( $crudo['mercado_pago']['production']['access_token'] ?? '' ) )
+);
 
 echo "\n=== pasar a comercial guarda sus claves y no toca las de pruebas ===\n";
 $hash_sandbox = md5( (string) ( $crudo['mercado_pago']['sandbox']['access_token'] ?? '' ) );
@@ -190,9 +204,19 @@ list( $tipo, $valor ) = ejecutar( array( $admin, 'handle_save' ), $post );
 check( 'redirige', $tipo, 'redirect' );
 
 if ( $modo_bloqueado ) {
-	// La constante decide: guardar no cambia el modo, pero las claves quedan.
-	check( 'con el modo fijado por constante no se activa', false !== strpos( $valor, 'updated=payments' ), true );
-	check( 'el modo sigue siendo el de wp-config.php', $PaymentConfig::desired_mode( 'mercado_pago' ), (string) constant( 'SIMPLE_FORM_MERCADO_PAGO_MODE' ) );
+	// En Mercado Pago el ambiente lo decide la credencial (TEST- / APP_USR-), no
+	// el selector: un token que no es TEST- deja el medio en producción.
+	check( 'con el modo bloqueado igual se guarda', false !== strpos( $valor, 'updated=payments' ) || false !== strpos( $valor, 'warning=https' ), true );
+	check( 'el modo se detecta de la credencial', $PaymentConfig::mode( 'mercado_pago' ), 'production' );
+
+	if ( ! $https ) {
+		$salida = '';
+		ob_start();
+		$admin->render_page();
+		$salida = (string) ob_get_clean();
+
+		check( 'el panel avisa que sin HTTPS no se cobra', false !== strpos( $salida, 'Credencial de producción sin HTTPS' ), true );
+	}
 } elseif ( $https ) {
 	check( 'en HTTPS se activa el modo comercial', false !== strpos( $valor, 'updated=payments' ), true );
 	check( 'y el modo efectivo es producción', $PaymentConfig::mode( 'mercado_pago' ), 'production' );
@@ -210,6 +234,8 @@ check( 'el token de producción es el suyo', 'PROD-token-de-prueba', descifrar( 
 echo "\n=== volver a pruebas no borra las claves de comercial ===\n";
 $hash_prod = md5( (string) ( get_option( 'simple_form_payment_credentials' )['mercado_pago']['production']['access_token'] ?? '' ) );
 
+// Cambiar solo el selector no cambia nada: con un token de producción el medio
+// sigue en producción aunque el select diga "pruebas".
 $post = array_merge(
 	$nonce(),
 	array(
@@ -219,10 +245,23 @@ $post = array_merge(
 list( $tipo, $valor ) = ejecutar( array( $admin, 'handle_save' ), $post );
 
 check( 'redirige', $tipo, 'redirect' );
-check( 'el modo efectivo queda en pruebas', $PaymentConfig::mode( 'mercado_pago' ), 'sandbox' );
+check( 'el selector solo no cambia el ambiente', $PaymentConfig::mode( 'mercado_pago' ), 'production' );
 check( 'las claves de comercial siguen guardadas', $hash_prod, md5( (string) ( get_option( 'simple_form_payment_credentials' )['mercado_pago']['production']['access_token'] ?? '' ) ) );
 check( 'y las de pruebas también', $hash_sandbox, md5( (string) ( get_option( 'simple_form_payment_credentials' )['mercado_pago']['sandbox']['access_token'] ?? '' ) ) );
-check( 'un campo vacío conserva el valor del modo', 'TEST-token-de-prueba', descifrar( 'mercado_pago', 'sandbox', 'access_token' ) );
+
+// Para volver a pruebas hay que pegar un token TEST-.
+$post = array_merge(
+	$nonce(),
+	array(
+		'payments' => array( 'mercado_pago' => array( 'access_token' => 'TEST-token-otra-vez' ) ),
+	)
+);
+list( $tipo, $valor ) = ejecutar( array( $admin, 'handle_save' ), $post );
+
+check( 'redirige', $tipo, 'redirect' );
+check( 'con un token TEST- vuelve a pruebas', $PaymentConfig::mode( 'mercado_pago' ), 'sandbox' );
+check( 'y el juego de comercial sigue intacto', $hash_prod, md5( (string) ( get_option( 'simple_form_payment_credentials' )['mercado_pago']['production']['access_token'] ?? '' ) ) );
+check( 'el token de pruebas es el nuevo', 'TEST-token-otra-vez', descifrar( 'mercado_pago', 'sandbox', 'access_token' ) );
 
 echo "\n=== el modo elegido es el que se usa para cobrar ===\n";
 $token_sandbox = $PaymentConfig::credential( 'mercado_pago', 'access_token' );
@@ -231,7 +270,7 @@ $token_const   = defined( 'SIMPLE_FORM_MERCADO_PAGO_ACCESS_TOKEN' ) && '' !== (s
 if ( $token_const ) {
 	check( 'la constante manda sobre lo guardado', $PaymentConfig::source( 'mercado_pago', 'access_token' ), 'constant' );
 } else {
-	check( 'sin constante se lee el modo activo (pruebas)', 'TEST-token-de-prueba', $token_sandbox );
+	check( 'sin constante se lee el modo activo (pruebas)', 'TEST-token-otra-vez', $token_sandbox );
 	check( 'y su fuente es "stored"', $PaymentConfig::source( 'mercado_pago', 'access_token' ), 'stored' );
 }
 
@@ -261,7 +300,7 @@ check( 'y ofrece el botón de añadir', false !== strpos( $html_vacio, 'data-add
 check( 'y ofrece PayPal como pasarela a agregar', false !== strpos( $html_vacio, 'id="sf-payment-tpl-paypal"' ), true );
 check( 'con la plantilla del medio disponible', false !== strpos( $html_vacio, 'id="sf-payment-tpl-mercado_pago"' ), true );
 if ( $modo_bloqueado ) {
-	check( 'la plantilla avisa que el modo lo fija wp-config.php', false !== strpos( $html_vacio, 'Lo fija SIMPLE_FORM_MERCADO_PAGO_MODE' ), true );
+	check( 'la plantilla dice que el modo lo decide la credencial', false !== strpos( $html_vacio, 'Lo decide la credencial' ), true );
 } else {
 	check( 'la plantilla trae su selector de modo', false !== strpos( $html_vacio, 'payments[mercado_pago][mode]' ), true );
 }

@@ -22,6 +22,13 @@ define( 'DOING_AJAX', true );
 $sf_site_root = (string) getenv( 'SF_SITE_PATH' );
 require ( '' !== $sf_site_root ? rtrim( $sf_site_root, '/' ) : dirname( __DIR__, 5 ) ) . '/wp-load.php';
 
+// El límite por minuto existe para el sitio real; corriendo 13 suites seguidas
+// desde la misma IP se llega a 429 y las pruebas fallan por un motivo que no
+// tiene que ver con lo que prueban. El hook es el que el propio RateLimit
+// documenta para desactivarlo en pruebas (test-rate-limit.php no lo usa).
+add_filter( 'simple_form_rate_limit', '__return_zero' );
+
+
 global $wpdb;
 
 class SF_Die extends Exception {}
@@ -102,6 +109,12 @@ $table  = \SimpleForm\Database\Database::table_name( \SimpleForm\Database\Databa
 $max_id = (int) $wpdb->get_var( "SELECT MAX(id) FROM `{$table}`" );
 
 $services_before = get_option( 'simple_form_services', null );
+
+// Credenciales: se usan las de pruebas de la suite y se restauran al final. Sin
+// esto el resultado depende de qué token tenga guardado el sitio (uno de
+// producción con el sitio en HTTP bloquea el cobro, y con razón).
+$credentials_before = get_option( 'simple_form_payment_credentials', null );
+\SimpleForm\Payments\PaymentConfig::save( 'mercado_pago', 'sandbox', array( 'access_token' => 'TEST-token-de-la-suite', 'webhook_secret' => 'secreto-de-la-suite' ) );
 
 // El rango del radio lo fija el administrador y puede estar en cualquier valor:
 // la suite usa el de fábrica (100 m a 1 km) para no depender de lo guardado.
@@ -532,10 +545,21 @@ if ( null === $radius_before ) {
 	update_option( 'simple_form_radius', $radius_before );
 }
 
+if ( null === $credentials_before ) {
+	delete_option( 'simple_form_payment_credentials' );
+} else {
+	update_option( 'simple_form_payment_credentials', $credentials_before, false );
+}
+
 check( 'pedidos de prueba borrados', (int) $deleted, 1 );
 check( 'sin filas de prueba restantes', (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$table}` WHERE id > {$max_id}" ), 0 );
 check( 'opción de servicios restaurada', get_option( 'simple_form_services', null ), $services_before );
 check( 'rango del radio restaurado', get_option( 'simple_form_radius', null ), $radius_before );
+check(
+	'credenciales restauradas',
+	md5( (string) wp_json_encode( get_option( 'simple_form_payment_credentials', null ) ) ),
+	md5( (string) wp_json_encode( $credentials_before ) )
+);
 
 printf( "\n%s\n", 0 === $failures ? 'TODO OK' : "FALLAS: {$failures}" );
 exit( $failures > 0 ? 1 : 0 );
