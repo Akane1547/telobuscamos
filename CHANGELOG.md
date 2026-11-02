@@ -1,5 +1,19 @@
 # Cambios
 
+## f7dd11e - Feat: menú general SimpleForm, radio configurable y buscador sin direcciones viejas
+
+- **src/Admin/AdminMenu.php** (nuevo): menú de primer nivel *SimpleForm* (prioridad 9) con una portada que enlaza a cada sección. **Servicios de pago**, **Medios de pago**, **Catálogos del objeto** y **Pedidos** pasan de menús sueltos a submenús, en ese orden (prioridades 10 a 14). Los slugs no cambian.
+- **src/Core/Radius.php** (nuevo): única fuente de verdad del rango del radio. Opción `simple_form_radius` (`min_m`, `max_m`, `step_m`), normalización a múltiplos de 10 m, piso de 10 m y techo de 50 km. `contains()` valida; `format()` devuelve el mismo texto que ve el cliente ("100 m", "1,5 km").
+- **src/Admin/AdminRadius.php** (nuevo): pantalla *SimpleForm → Radio de búsqueda* con los tres valores en metros, `manage_options` + nonce propio y avisos por error en vez de corrección silenciosa.
+- **src/Core/Shortcode.php**: el slider y el campo oculto en km salen del rango guardado (antes 100/1000/100 y 0.1 escritos a mano).
+- **src/Core/Ajax.php**: `read_radius_km()` valida con `Radius::contains()`; se fue el 0.1–1 fijo del servidor.
+- **src/Core/Assets.php**: publica `radius` (minKm, maxKm, stepM) en `SimpleFormConfig` y compone el mensaje del validador con el rango real.
+- **assets/js/validator.js** y **assets/js/map.js**: leen el rango de la config; el respaldo es el `min` del propio slider, no un 100 fijo.
+- **assets/js/geocode.js**: la lista de sugerencias se cierra al escribir y al arrancar cada consulta, y `choose()` suelta los resultados viejos. Antes quedaban a la vista las direcciones de la búsqueda anterior apuntando a índices vaciados: se veía una sugerencia, se clickeaba y no pasaba nada (el "HUD bugeado"). El pin y el radio elegidos no se tocan.
+- **Bug**: `Radius::quantize()` aplicaba el piso al cociente y multiplicaba después, así que cualquier valor menor a 100 m terminaba en 100 m. Lo detectó `RadiusTest`.
+- **tests/unit/RadiusTest.php** (nuevo, 8 casos) y **tests/integration/test-radius.php** (nuevo, 32 comprobaciones: slider en el HTML, servidor aceptando/rechazando según el rango, admin con y sin permiso y nonce, valores inválidos). **tests/front/smoke.mjs** verifica el rango contra la config y que el buscador no deje sugerencias viejas.
+- **simple-form.php** y **readme.txt**: versión 1.4.0.
+
 ## 47412ce - Feat: el paso 1 pide el objeto (tipo, descripción, tamaño y material)
 
 - **src/Core/Catalog.php** (nuevo): la única fuente de verdad de las tres listas. El administrador las edita, el formulario manda el **id** y el servidor comprueba que exista. `normalize()` pasa el id por `sanitize_title()`, descarta filas vacías y repetidas, rellena la etiqueta con el id si falta y corta en 60 entradas por lista (la opción se autoloada en cada petición).
