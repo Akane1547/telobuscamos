@@ -96,7 +96,7 @@ cuenta. Antes de abrir el registro al público:
 ## 9. Verificación final (ejecutada en local)
 
 ```text
-composer test:all       → 170 unitarias + 8 suites de integración, 0 fallos
+composer test:all       → 216 unitarias / 470 aserciones + 13 suites de integración, 0 fallos
 composer test:security  → 182 pruebas, 0 fallas
 composer test:front     → TODO OK
 ```
@@ -104,3 +104,15 @@ composer test:front     → TODO OK
 En producción conviene repetir `composer test:security` apuntando al sitio real
 (`SF_SECURITY_URL` / `SF_SECURITY_HOST`) **después** de configurar HTTPS y antes
 de abrir el registro: crea y borra sus propias cuentas.
+
+## 10. Pendientes conocidos (no bloquean el despliegue, sí la apertura)
+
+| Tema | Estado |
+|---|---|
+| Cambio de contraseña desde `/perfil` | **No existe.** Solo está la recuperación por correo (`/iniciar-sesion?form=recuperar`), que depende del punto 7. |
+| Casilla de consentimiento / enlace a la política de privacidad en el registro | **No existe.** Se recogen nombre, correo y teléfono sin registro del consentimiento. |
+| Webhook de PayPal | **No implementado.** La confirmación depende de que el comprador vuelva (lo dice `PayPalGateway`); un pago sin retorno no se acredita. |
+| Tasa CLP→USD de PayPal | La fija el admin (`usd_rate`) y sin ella la pasarela no crea el pago. PayPal no acepta CLP. |
+| Pagos de prueba reales con Mercado Pago | Hechos con la API simulada (5 recorridos, `test-payment-flows.php`). Falta un token `TEST-` para hacerlos contra el sandbox real. |
+| Paquete `.zip` de despliegue | No está generado; `readme.txt` y `.distignore` ya están. |
+| Retención de datos y backups | Sin política definida (punto 8). |
