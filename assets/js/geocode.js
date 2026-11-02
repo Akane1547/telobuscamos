@@ -301,6 +301,7 @@
 			els.error.textContent = '';
 		}
 
+		results = [];
 		close();
 
 		document.dispatchEvent( new CustomEvent( SF.events.placeSelected, {
@@ -314,6 +315,9 @@
 	async function search( query ) {
 		const myToken = ++requestToken;
 
+		// Se cierra antes de consultar: el "Buscando…" avisa en su propio
+		// renglón y no queda a la vista una sugerencia de otra dirección.
+		close();
 		setStatus( t( 'searching', 'Buscando direcciones…' ) );
 
 		try {
@@ -351,6 +355,12 @@
 		}
 
 		results = [];
+
+		// La lista de la búsqueda anterior no sobrevive al primer cambio: si se
+		// queda visible mientras llega la nueva, muestra direcciones que ya no
+		// corresponden a lo escrito (y las viejas apuntaban a índices que se
+		// acaban de vaciar). Solo se muestran las de la consulta actual.
+		close();
 
 		if ( query.length < MIN_CHARS ) {
 			close();

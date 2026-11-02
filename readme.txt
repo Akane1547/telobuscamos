@@ -4,7 +4,7 @@ Tags: formulario, pago, mercadopago, servicios, mapa
 Requires at least: 6.0
 Requires PHP: 7.4
 Tested up to: 6.7
-Stable tag: 1.3.0
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,11 @@ No. Cada pedido guarda un snapshot de la etiqueta, el precio base y el precio po
 Porque todavía no se configuró ninguno en *Pedidos → Pagos*. Hasta que no haya un medio habilitado, el formulario no ofrece ninguno.
 
 == Changelog ==
+
+= 1.4.0 =
+* **Menú general SimpleForm**: las secciones dejan de ser menús sueltos y cuelgan de uno solo (Servicios de pago, Medios de pago, Radio de búsqueda, Catálogos del objeto y Pedidos). Los slugs no cambian.
+* **Radio de búsqueda configurable**: pantalla nueva para fijar el mínimo, el máximo y el paso del slider del mapa. El formulario, el validador del navegador y la validación del servidor leen el mismo rango: un radio fuera de rango se rechaza con 422 aunque se mande a mano.
+* **Buscador de direcciones**: la lista de sugerencias ya no arrastra las de la búsqueda anterior. Al escribir se cierra y solo se muestran las direcciones de la consulta actual; el pin de la última elegida no se toca. El mapa no cambia en nada más.
 
 = 1.3.0 =
 * **Paso 1 con el objeto**: "¿Qué tipo de objeto es?", descripción del objeto, tamaño y material. Los tres selects salen de listas que edita el administrador en *Catálogos del objeto*, y llegan al formulario **por AJAX con nonce**: las opciones no viajan en el HTML de la página.

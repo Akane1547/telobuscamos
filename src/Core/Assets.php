@@ -110,6 +110,14 @@ class Assets {
                     'lng'  => -70.6693,
                     'zoom' => 4,
                 ),
+                // Rango del radio del mapa, desde la pantalla del admin. El
+                // slider ya viene pintado con estos valores; el validador los
+                // usa para no repetir el 0.1-1 en el JS.
+                'radius' => array(
+                    'minKm' => Radius::min_km(),
+                    'maxKm' => Radius::max_km(),
+                    'stepM' => Radius::step_m(),
+                ),
                 // Leaflet empaquetado en el plugin: el front carga estas URLs
                 // de forma diferida y no depende de ningún CDN de terceros.
                 'leaflet' => array(
@@ -146,7 +154,8 @@ class Assets {
                     'errPhone'     => __( 'Ingresa un teléfono chileno válido (9 dígitos, empieza con 9).', 'simple-form' ),
                     'errService'   => __( 'Selecciona un servicio.', 'simple-form' ),
                     'errLocation'  => __( 'Selecciona una ubicación en el mapa.', 'simple-form' ),
-                    'errRadius'    => __( 'El radio debe estar entre 100 metros y 1 km.', 'simple-form' ),
+                    /* translators: 1: radio mínimo, 2: radio máximo */
+                    'errRadius'    => sprintf( __( 'El radio debe estar entre %1$s y %2$s.', 'simple-form' ), Radius::format( Radius::min_km() ), Radius::format( Radius::max_km() ) ),
                     'errPayment'   => __( 'Selecciona un medio de pago.', 'simple-form' ),
                     'errGeneric'   => __( 'No se pudo guardar. Revisa los datos e inténtalo de nuevo.', 'simple-form' ),
                 ),

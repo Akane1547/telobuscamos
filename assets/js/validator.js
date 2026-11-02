@@ -137,10 +137,12 @@
 				errors.map_location = t( 'errLocation', 'Selecciona una ubicación en el mapa.' );
 			}
 
-			// El radio va de 100 metros a 1 km: parseFloat, no parseInt, porque
+			// El rango lo fija el administrador: parseFloat, no parseInt, porque
 			// 0.5 km redondeado a entero sería 0 y quedaría siempre inválido.
-			if ( ! radius || radius < 0.1 || radius > 1 ) {
-				errors.radius_km = t( 'errRadius', 'El radio debe estar entre 100 metros y 1 km.' );
+			const rango = SF.radius || { minKm: 0.1, maxKm: 1 };
+
+			if ( ! radius || radius < rango.minKm - 0.0001 || radius > rango.maxKm + 0.0001 ) {
+				errors.radius_km = t( 'errRadius', 'El radio está fuera del rango permitido.' );
 			}
 
 			return { valid: Object.keys( errors ).length === 0, errors };

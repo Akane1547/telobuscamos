@@ -9,6 +9,7 @@ namespace SimpleForm\Core;
 use SimpleForm\Admin\AdminOrders;
 use SimpleForm\Admin\AdminPayments;
 use SimpleForm\Admin\AdminServices;
+use SimpleForm\Core\Radius;
 use SimpleForm\Account\Auth as AccountAuth;
 use SimpleForm\Account\Pages as AccountPages;
 use SimpleForm\Core\Cleanup;
@@ -82,11 +83,15 @@ class Plugin {
             'wp_loaded',
             function () {
                 Catalog::install();
+                Radius::install();
             }
         );
 
         // Solo instanciar la pantalla de administración si estamos en wp-admin
         if ( is_admin() ) {
+            // El menú padre va primero: las secciones se cuelgan de él.
+            new \SimpleForm\Admin\AdminMenu();
+            new \SimpleForm\Admin\AdminRadius();
             new \SimpleForm\Admin\AdminCatalogs();
             new AdminServices();
             new AdminPayments();

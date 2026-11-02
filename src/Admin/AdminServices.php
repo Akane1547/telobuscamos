@@ -55,13 +55,13 @@ class AdminServices {
 	}
 
 	public function register_menu(): void {
-		$this->screen_id = (string) add_menu_page(
+		$this->screen_id = (string) add_submenu_page(
+			AdminMenu::SLUG,
 			__( 'Servicios de pago', 'simple-form' ),
 			__( 'Servicios de pago', 'simple-form' ),
 			'manage_options',
 			'simple-form-services',
-			array( $this, 'render_page' ),
-			'dashicons-money-alt'
+			array( $this, 'render_page' )
 		);
 	}
 

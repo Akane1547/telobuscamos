@@ -27,21 +27,21 @@ final class AdminOrders {
 	 * Registra el menú.
 	 */
 	public function __construct() {
-		add_action( 'admin_menu', array( $this, 'register_menu' ) );
+		// Prioridad 14: último dentro del menú SimpleForm.
+		add_action( 'admin_menu', array( $this, 'register_menu' ), 14 );
 	}
 
 	/**
 	 * Añade "Pedidos" al menú de administración.
 	 */
 	public function register_menu(): void {
-		add_menu_page(
+		add_submenu_page(
+			AdminMenu::SLUG,
 			__( 'Pedidos', 'simple-form' ),
 			__( 'Pedidos', 'simple-form' ),
 			'manage_options',
 			self::MENU_SLUG,
-			array( $this, 'render_page' ),
-			'dashicons-list-view',
-			56
+			array( $this, 'render_page' )
 		);
 	}
 

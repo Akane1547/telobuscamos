@@ -135,7 +135,8 @@ class Ajax {
 	}
 
 	/**
-	 * Lee y valida el radio en km (0.1 a 1: de 100 metros a 1 km).
+	 * Lee y valida el radio en km contra el rango configurado en
+	 * *SimpleForm → Radio de búsqueda*.
 	 *
 	 * Devuelve 0.0 cuando no sirve. El radio nunca es 0, así que sirve de
 	 * centinela sin necesidad de un null.
@@ -149,7 +150,7 @@ class Ajax {
 
 		$radius = round( (float) $raw_radius, 2 );
 
-		return ( $radius >= 0.1 && $radius <= 1.0 ) ? $radius : 0.0;
+		return Radius::contains( $radius ) ? $radius : 0.0;
 	}
 
 	/**

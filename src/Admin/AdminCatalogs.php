@@ -44,7 +44,8 @@ class AdminCatalogs {
 	 * Engancha menú, guardado y assets.
 	 */
 	public function __construct() {
-		add_action( 'admin_menu', array( $this, 'register_menu' ) );
+		// Prioridad 13: dentro de SimpleForm va después de Radio de búsqueda.
+		add_action( 'admin_menu', array( $this, 'register_menu' ), 13 );
 		add_action( 'admin_post_sf_save_catalogs', array( $this, 'handle_save' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 	}
@@ -53,13 +54,13 @@ class AdminCatalogs {
 	 * Menú "Catálogos del objeto".
 	 */
 	public function register_menu(): void {
-		$this->screen_id = (string) add_menu_page(
+		$this->screen_id = (string) add_submenu_page(
+			AdminMenu::SLUG,
 			__( 'Catálogos del objeto', 'simple-form' ),
 			__( 'Catálogos del objeto', 'simple-form' ),
 			'manage_options',
 			'simple-form-catalogs',
-			array( $this, 'render_page' ),
-			'dashicons-search'
+			array( $this, 'render_page' )
 		);
 	}
 

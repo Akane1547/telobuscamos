@@ -389,8 +389,31 @@ async function main() {
 			};
 		})()` );
 
-		check( 'el radio va de 100 m a 1 km', JSON.stringify( [ sliderRadio.min, sliderRadio.max, sliderRadio.step ] ), JSON.stringify( [ '100', '1000', '100' ] ) );
-		check( 'arranca en 100 m', JSON.stringify( [ sliderRadio.valor, sliderRadio.etiqueta ] ), JSON.stringify( [ '100', '100 m' ] ) );
+		const rango = await evaluar( "window.SimpleFormConfig.radius" );
+
+		check(
+			'el slider usa el rango configurado',
+			JSON.stringify( [ sliderRadio.min, sliderRadio.max, sliderRadio.step ] ),
+			JSON.stringify( [ String( rango.minKm * 1000 ), String( rango.maxKm * 1000 ), String( rango.stepM ) ] )
+		);
+		check( 'arranca en el mínimo configurado', sliderRadio.valor, String( rango.minKm * 1000 ) );
+
+		// El validador del navegador también lee el rango configurado: un radio
+		// por encima del máximo se marca, y el mínimo del rango se acepta.
+		const radiocheck = await evaluar( `(() => {
+			const form = document.querySelector('#pn-payment-form');
+			const campo = form.querySelector('[name="radius_km"]');
+			const antes = campo.value;
+			campo.value = String( window.SimpleFormConfig.radius.maxKm + 0.5 );
+			const fuera = window.SimpleFormValidator.step2( form ).errors.radius_km;
+			campo.value = String( window.SimpleFormConfig.radius.minKm );
+			const dentro = window.SimpleFormValidator.step2( form ).errors.radius_km;
+			campo.value = antes;
+			return { fuera: typeof fuera, dentro: dentro };
+		})()` );
+
+		check( 'un radio sobre el máximo se rechaza', radiocheck.fuera, 'string' );
+		check( 'el mínimo del rango se acepta', radiocheck.dentro, undefined );
 		check( 'la barra del radio no se sale de su caja', sliderRadio.dentro, true );
 
 		// ------------------------------------------------------------------
@@ -430,6 +453,30 @@ async function main() {
 			check( 'la lista se cierra', await evaluar( "document.querySelector('#pn-address-list').hidden" ), true );
 			check( 'el pin se movió (lat)', await evaluar( "parseFloat(document.querySelector('#pn-lat').value) < -17" ), true );
 			check( 'el pin se movió (lng)', await evaluar( "parseFloat(document.querySelector('#pn-lng').value) < -60" ), true );
+
+			// Volver a escribir: la lista de la búsqueda anterior no puede
+			// quedar a la vista (mostraba direcciones que ya no corresponden).
+			const viejas = await evaluar( `(() => {
+				const i = document.querySelector('#pn-address');
+				i.value = 'Providencia 12';
+				i.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+				const lista = document.querySelector('#pn-address-list');
+				return { oculta: lista.hidden, opciones: lista.children.length };
+			})()` );
+
+			check( 'al escribir se cierra la lista anterior', viejas.oculta, true );
+			check( 'y no deja sugerencias viejas', viejas.opciones, 0 );
+
+			// Y la consulta nueva sí trae las suyas.
+			let nuevas = [];
+
+			for ( let i = 0; i < 15 && 0 === nuevas.length; i++ ) {
+				await esperar( 1000 );
+				nuevas = await evaluar( "[...document.querySelectorAll('#pn-address-list .pn-address__option')].map( o => o.textContent )" );
+			}
+
+			check( 'la consulta nueva pinta sus propias sugerencias', nuevas.length > 0, true );
+			check( 'y ninguna es la anterior', nuevas.includes( sugerencias[ 0 ] ), false );
 		}
 
 		// ------------------------------------------------------------------

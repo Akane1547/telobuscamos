@@ -203,6 +203,8 @@ class Shortcode {
 							</div>
 						</div>
 
+						<?php // El rango lo fija el administrador en SimpleForm → Radio de búsqueda. ?>
+						<?php $radio = Radius::all(); ?>
 						<div class="pn-form__row">
 							<label class="pn-form__label"><?php esc_html_e( 'Ubicación y radio de búsqueda', 'simple-form' ); ?></label>
 
@@ -210,10 +212,14 @@ class Shortcode {
 
 							<div class="map-plugin__radio-control">
 								<label for="pn-map-radius" class="map-plugin__radio-label">
-									<?php esc_html_e( 'Radio:', 'simple-form' ); ?> <span class="map-plugin__radio-value">100 m</span>
+									<?php esc_html_e( 'Radio:', 'simple-form' ); ?> <span class="map-plugin__radio-value"><?php echo esc_html( Radius::format( $radio['min_m'] / 1000 ) ); ?></span>
 								</label>
-								<?php // El slider va en metros (100 a 1000, de a 100) y el campo que viaja al servidor en km. ?>
-								<input type="range" id="pn-map-radius" class="map-plugin__radio-slider" min="100" max="1000" step="100" value="100" />
+								<?php // El slider va en metros y el campo que viaja al servidor en km. ?>
+								<input type="range" id="pn-map-radius" class="map-plugin__radio-slider"
+									min="<?php echo esc_attr( (string) $radio['min_m'] ); ?>"
+									max="<?php echo esc_attr( (string) $radio['max_m'] ); ?>"
+									step="<?php echo esc_attr( (string) $radio['step_m'] ); ?>"
+									value="<?php echo esc_attr( (string) $radio['min_m'] ); ?>" />
 							</div>
 
 							<div class="map-plugin__price">
@@ -227,7 +233,7 @@ class Shortcode {
 
 							<input type="hidden" id="pn-lat" name="lat" value="" />
 							<input type="hidden" id="pn-lng" name="lng" value="" />
-							<input type="hidden" id="pn-radius" name="radius_km" value="0.1" />
+							<input type="hidden" id="pn-radius" name="radius_km" value="<?php echo esc_attr( (string) ( $radio['min_m'] / 1000 ) ); ?>" />
 						</div>
 					</section>
 

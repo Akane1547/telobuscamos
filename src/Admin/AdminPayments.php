@@ -35,7 +35,8 @@ class AdminPayments {
 	const NONCE_CREDENTIALS = 'sf_payment_credentials_nonce';
 
 	public function __construct() {
-		// Prioridad 11: el menú padre lo registra AdminServices en la 10.
+		// Prioridad 11: el menú padre (AdminMenu) se registra en la 9 y
+		// Servicios de pago en la 10, así que este queda justo debajo.
 		add_action( 'admin_menu', array( $this, 'register_menu' ), 11 );
 		add_action( 'admin_post_' . self::ACTION_METHODS, array( $this, 'handle_save_methods' ) );
 		add_action( 'admin_post_' . self::ACTION_CREDENTIALS, array( $this, 'handle_save_credentials' ) );
@@ -43,7 +44,7 @@ class AdminPayments {
 
 	public function register_menu(): void {
 		add_submenu_page(
-			'simple-form-services',
+			AdminMenu::SLUG,
 			__( 'Medios de pago', 'simple-form' ),
 			__( 'Medios de pago', 'simple-form' ),
 			'manage_options',

@@ -104,8 +104,9 @@
 	 * Puramente presentacional — el precio real llega aparte.
 	 */
 	function updateRadiusDisplay() {
-		// El slider va en metros y el campo que viaja al servidor en km.
-		const metros = parseInt( els.radiusInput.value, 10 ) || 100;
+		// El slider va en metros y el campo que viaja al servidor en km. El
+		// respaldo es el mínimo del propio slider: el rango lo pone el admin.
+		const metros = parseInt( els.radiusInput.value, 10 ) || parseInt( els.radiusInput.min, 10 ) || 100;
 		const km = metros / 1000;
 
 		els.radiusValueEl.textContent = SF.formatRadius( km );
@@ -290,7 +291,7 @@
 		marker = window.L.marker( [ center.lat, center.lng ], { draggable: true } ).addTo( mapa );
 
 		radiusCircle = window.L.circle( [ center.lat, center.lng ], {
-			radius: parseInt( els.radiusInput.value, 10 ) || 100,
+			radius: parseInt( els.radiusInput.value, 10 ) || parseInt( els.radiusInput.min, 10 ) || 100,
 			color: '#f5b800',
 			fillColor: '#f5b800',
 			fillOpacity: 0.15,
